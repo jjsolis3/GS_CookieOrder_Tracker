@@ -46,4 +46,6 @@ public class Order
     public GirlScout? GirlScout { get; set; }
     public List<OrderLineItem> LineItems { get; set; } = new();
     public List<Payback> Paybacks { get; set; } = new();
+
+    public string PaymentMethod { get; set; } = "Cash"; // or whatever default
 }

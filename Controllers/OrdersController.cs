@@ -58,15 +58,22 @@ public class OrdersController : Controller
             return View(model);
         }
 
+        // Treat incoming values as *local* time (or whatever your UI means), then convert to UTC.
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
+
+        var orderedLocal = DateTime.SpecifyKind(model.OrderedAt, DateTimeKind.Unspecified);
+        var orderedUtc = TimeZoneInfo.ConvertTimeToUtc(orderedLocal, tz);
+
         var order = new Order
         {
             Id = Guid.NewGuid(),
             CustomerId = model.CustomerId,
             GirlScoutId = model.GirlScoutId,
             OrderType = model.OrderType,
+            PaymentMethod = model.PaymentMethod ?? "Cash",
             Status = model.OrderType == "Online Delivery" ? "Paid" : "Pending",
-            OrderedAt = model.OrderedAt,
-            DeliveryDate = model.DeliveryDate,
+            OrderedAt = DateTime.SpecifyKind(orderedUtc, DateTimeKind.Utc), //model.OrderedAt,
+            DeliveryDate = model.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today),
             Notes = model.Notes,
             TotalQty = model.LineItems.Sum(li => li.QuantityBoxes),
             TotalPrice = model.LineItems.Sum(li => li.QuantityBoxes * li.UnitPrice),
@@ -114,6 +121,14 @@ public class OrdersController : Controller
         {
             new("Personal", "Personal"),
             new("Troop", "Troop")
+        };
+        model.PaymentMethods = new List<SelectListItem>
+        {
+            new("Cash", "Cash"),
+            new("Card", "Card"),
+            new("Zelle", "Zelle"),
+            new("Venmo", "Venmo"),
+            new("Other", "Other")
         };
     }
 

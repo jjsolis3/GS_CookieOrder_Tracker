@@ -19,6 +19,11 @@ public class OrderCreateViewModel
 
     public DateOnly? DeliveryDate { get; set; }
 
+    [Required]
+    [MaxLength(50)]
+    public string PaymentMethod { get; set; } = "Cash"; // or whatever default
+
+
     public string? Notes { get; set; }
 
     /// <summary>Multiple line items for this order.</summary>
@@ -30,6 +35,8 @@ public class OrderCreateViewModel
     public List<SelectListItem> Products { get; set; } = new();
     public List<SelectListItem> OrderTypes { get; set; } = new();
     public List<SelectListItem> InventorySources { get; set; } = new();
+    public List<SelectListItem> PaymentMethods { get; set; } = new();
+
 }
 
 public class OrderLineItemViewModel

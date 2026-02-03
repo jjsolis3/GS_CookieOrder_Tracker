@@ -44,6 +44,10 @@
                             <label asp-for="Notes" class="form-label">Notes</label>
                             <textarea asp-for="Notes" class="form-control" rows="1"></textarea>
                         </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="PaymentMethods" class="form-label">Payment Type</label>
+                            <select asp-for="PaymentMethods" asp-items="Model.PaymentMethods" class="form-select"></select>
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
