@@ -4,5 +4,38 @@
 
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <p class="lead">Use the shortcuts below to keep orders, inventory receipts, and paybacks up to date.</p>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Orders</h5>
+                <p class="card-text">Capture new sales orders and track status, totals, and delivery dates.</p>
+                <a class="btn btn-primary" asp-controller="Orders" asp-action="Create">New Order</a>
+                <a class="btn btn-outline-secondary ms-2" asp-controller="Orders" asp-action="Index">View Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Inventory</h5>
+                <p class="card-text">Log inventory batches and the products you receive.</p>
+                <a class="btn btn-primary" asp-controller="Inventory" asp-action="Create">New Receipt</a>
+                <a class="btn btn-outline-secondary ms-2" asp-controller="Inventory" asp-action="Index">View Inventory</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Paybacks</h5>
+                <p class="card-text">Record repayments and track balances per order.</p>
+                <a class="btn btn-primary" asp-controller="Paybacks" asp-action="Create">New Payback</a>
+                <a class="btn btn-outline-secondary ms-2" asp-controller="Paybacks" asp-action="Index">View Paybacks</a>
+            </div>
+        </div>
+    </div>
 </div>
