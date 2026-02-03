@@ -56,8 +56,14 @@
                                         <option value="">-- Select Product --</option>
                                         @foreach (var p in Model.Products)
                                         {
-                                            var sel = p.Value == Model.Lines[i].ProductId.ToString() ? "selected" : "";
-                                            <option value="@p.Value" @sel>@p.Text</option>
+                                            if (p.Value == Model.Lines[i].ProductId.ToString())
+                                            {
+                                                <option value="@p.Value" selected="selected">@p.Text</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@p.Value">@p.Text</option>
+                                            }
                                         }
                                     </select>
                                 </div>
