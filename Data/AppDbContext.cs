@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection.Emit;
 
-namespace YourApp.Data;
+namespace GS_CookieOrder_Tracker.Data;
 
 public class AppDbContext : DbContext
 {
