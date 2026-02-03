@@ -21,8 +21,7 @@ public class OrderCreateViewModel
 
     [Required]
     [MaxLength(50)]
-    public string PaymentMethod { get; set; } = "Cash"; // or whatever default
-
+    public string PaymentMethod { get; set; } = "Cash";
 
     public string? Notes { get; set; }
 
@@ -34,9 +33,8 @@ public class OrderCreateViewModel
     public List<SelectListItem> GirlScouts { get; set; } = new();
     public List<SelectListItem> Products { get; set; } = new();
     public List<SelectListItem> OrderTypes { get; set; } = new();
-    public List<SelectListItem> InventorySources { get; set; } = new();
     public List<SelectListItem> PaymentMethods { get; set; } = new();
-
+    public List<SelectListItem> InventorySources { get; set; } = new();
 }
 
 public class OrderLineItemViewModel

@@ -11,7 +11,7 @@
                 <h4 class="card-title">New Order</h4>
             </div>
             <div class="card-body">
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="display:@(ViewData.ModelState.ErrorCount > 0 ? "block" : "none")"></div>
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
                 <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
@@ -32,21 +32,22 @@
                             <select asp-for="GirlScoutId" asp-items="Model.GirlScouts" class="form-select"></select>
                         </div>
                         <div class="col-md-4 mb-3">
+                            <label asp-for="PaymentMethod" class="form-label">Payment Method</label>
+                            <select asp-for="PaymentMethod" asp-items="Model.PaymentMethods" class="form-select" id="paymentMethod"></select>
+                            <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
                             <label asp-for="OrderedAt" class="form-label">Order Date</label>
-                            <input asp-for="OrderedAt" type="datetime-local" class="form-control" />
+                            <input asp-for="OrderedAt" type="date" class="form-control" />
                             <span asp-validation-for="OrderedAt" class="text-danger"></span>
                         </div>
                         <div class="col-md-4 mb-3" id="deliveryDateGroup">
                             <label asp-for="DeliveryDate" class="form-label">Delivery Date</label>
                             <input asp-for="DeliveryDate" type="date" class="form-control" />
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label asp-for="Notes" class="form-label">Notes</label>
                             <textarea asp-for="Notes" class="form-control" rows="1"></textarea>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label asp-for="PaymentMethods" class="form-label">Payment Type</label>
-                            <select asp-for="PaymentMethods" asp-items="Model.PaymentMethods" class="form-select"></select>
                         </div>
                     </div>
 

@@ -104,10 +104,12 @@ public class PaybacksController : Controller
             Id = Guid.NewGuid(),
             OrderId = model.OrderId,
             CustomerId = model.CustomerId,
-            PaidAt = model.PaidAt,
+            PaidAt = DateTime.SpecifyKind(model.PaidAt, DateTimeKind.Utc),
             Amount = model.Amount,
             Method = model.Method,
-            Notes = model.Notes
+            Notes = model.Notes,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _dbContext.Paybacks.Add(payback);

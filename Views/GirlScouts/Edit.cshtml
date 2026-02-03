@@ -1,0 +1,46 @@
+@model GS_CookieOrder_Tracker.Models.GirlScoutCreateViewModel
+
+@{
+    ViewData["Title"] = "Edit Girl Scout";
+    var scoutId = ViewData["ScoutId"];
+}
+
+<div class="row">
+    <div class="col-xl-6 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Edit Girl Scout</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="Edit" asp-route-id="@scoutId" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="FirstName" class="form-label">First Name</label>
+                            <input asp-for="FirstName" class="form-control" />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="LastName" class="form-label">Last Name</label>
+                            <input asp-for="LastName" class="form-control" />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="TroopNumber" class="form-label">Troop Number</label>
+                            <input asp-for="TroopNumber" class="form-control" placeholder="e.g. 1234" />
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Update</button>
+                        <a class="btn btn-outline-light ms-2" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

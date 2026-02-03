@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS inventory_returns (
 -- ==============================
 -- 2. Add missing columns: orders
 -- ==============================
+-- payment_method, is_online_paid, status, created_at, updated_at already exist in DB.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_price DECIMAL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_qty INT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_amount DECIMAL;
@@ -58,6 +59,7 @@ ALTER TABLE paybacks ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES custom
 -- 4. Add missing columns: inventory_receipts
 -- ==========================================
 ALTER TABLE inventory_receipts ADD COLUMN IF NOT EXISTS inventory_batch_id UUID REFERENCES inventory_batches(id);
+ALTER TABLE inventory_receipts ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ==========================================
 -- 5. Add missing columns: order_line_items
@@ -73,6 +75,11 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS cost DECIMAL;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS reward DECIMAL;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode TEXT;
+
+-- =====================================
+-- 7. Add missing columns: customers
+-- =====================================
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ============================================================
 -- DONE. All tables and columns should now match the app models.

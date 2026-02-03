@@ -25,6 +25,15 @@ public class InventoryReceipt
     [Column("quantity_cases")]
     public int QuantityCases { get; set; }
 
+    [Column("notes")]
+    public string? Notes { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public InventoryBatch? InventoryBatch { get; set; }
     public Product? Product { get; set; }
 }

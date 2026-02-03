@@ -55,7 +55,9 @@ public class ProductsController : Controller
             Vendor = model.Vendor,
             Cost = model.Cost,
             Reward = model.Reward,
-            Barcode = model.Barcode
+            Barcode = model.Barcode,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _dbContext.Products.Add(product);

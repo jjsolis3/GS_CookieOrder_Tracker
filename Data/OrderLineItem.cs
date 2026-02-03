@@ -30,6 +30,12 @@ public class OrderLineItem
     [MaxLength(20)]
     public string InventorySource { get; set; } = "Personal";
 
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public Order? Order { get; set; }
     public Product? Product { get; set; }
 }

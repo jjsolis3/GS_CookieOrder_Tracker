@@ -58,11 +58,11 @@ public class OrdersController : Controller
             return View(model);
         }
 
-        // Treat incoming values as *local* time (or whatever your UI means), then convert to UTC.
-        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
+        var isOnlinePaid = model.OrderType == "Online Delivery";
+        var totalPrice = model.LineItems.Sum(li => li.QuantityBoxes * li.UnitPrice);
 
-        var orderedLocal = DateTime.SpecifyKind(model.OrderedAt, DateTimeKind.Unspecified);
-        var orderedUtc = TimeZoneInfo.ConvertTimeToUtc(orderedLocal, tz);
+        // Ensure the OrderedAt value is treated as UTC for PostgreSQL timestamptz
+        var orderedUtc = DateTime.SpecifyKind(model.OrderedAt, DateTimeKind.Utc);
 
         var order = new Order
         {
@@ -70,16 +70,17 @@ public class OrdersController : Controller
             CustomerId = model.CustomerId,
             GirlScoutId = model.GirlScoutId,
             OrderType = model.OrderType,
-            PaymentMethod = model.PaymentMethod ?? "Cash",
-            Status = model.OrderType == "Online Delivery" ? "Paid" : "Pending",
-            OrderedAt = DateTime.SpecifyKind(orderedUtc, DateTimeKind.Utc), //model.OrderedAt,
-            DeliveryDate = model.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today),
+            PaymentMethod = model.PaymentMethod,
+            IsOnlinePaid = isOnlinePaid,
+            Status = isOnlinePaid ? "Paid" : "Pending",
+            OrderedAt = orderedUtc,
+            DeliveryDate = model.DeliveryDate,
             Notes = model.Notes,
             TotalQty = model.LineItems.Sum(li => li.QuantityBoxes),
-            TotalPrice = model.LineItems.Sum(li => li.QuantityBoxes * li.UnitPrice),
-            PaidAmount = model.OrderType == "Online Delivery"
-                ? model.LineItems.Sum(li => li.QuantityBoxes * li.UnitPrice)
-                : 0m
+            TotalPrice = totalPrice,
+            PaidAmount = isOnlinePaid ? totalPrice : 0m,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _dbContext.Orders.Add(order);
@@ -96,7 +97,9 @@ public class OrdersController : Controller
                 ProductId = li.ProductId,
                 QuantityBoxes = li.QuantityBoxes,
                 UnitPrice = li.UnitPrice,
-                InventorySource = source
+                InventorySource = source,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             _dbContext.OrderLineItems.Add(lineItem);
         }
@@ -117,18 +120,20 @@ public class OrdersController : Controller
             new("Online Delivery", "Online Delivery"),
             new("Booth Sale", "Booth Sale")
         };
+        model.PaymentMethods = new List<SelectListItem>
+        {
+            new("Cash", "Cash"),
+            new("Credit Card", "Credit Card"),
+            new("Venmo", "Venmo"),
+            new("Zelle", "Zelle"),
+            new("Check", "Check"),
+            new("Online Payment", "Online Payment"),
+            new("Other", "Other")
+        };
         model.InventorySources = new List<SelectListItem>
         {
             new("Personal", "Personal"),
             new("Troop", "Troop")
-        };
-        model.PaymentMethods = new List<SelectListItem>
-        {
-            new("Cash", "Cash"),
-            new("Card", "Card"),
-            new("Zelle", "Zelle"),
-            new("Venmo", "Venmo"),
-            new("Other", "Other")
         };
     }
 

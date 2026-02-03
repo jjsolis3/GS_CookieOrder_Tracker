@@ -32,10 +32,9 @@ public class InventoryController : Controller
     {
         var viewModel = new InventoryBatchCreateViewModel
         {
-            GirlScouts = await BuildGirlScoutOptionsAsync(),
-            Products = await BuildProductOptionsAsync()
+            Lines = new List<ReceiptLineViewModel> { new() }
         };
-
+        await PopulateDropdowns(viewModel);
         return View(viewModel);
     }
 
@@ -43,12 +42,22 @@ public class InventoryController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(InventoryBatchCreateViewModel model)
     {
+        // Remove blank lines (no product selected)
+        model.Lines.RemoveAll(l => l.ProductId == Guid.Empty);
+
+        if (model.Lines.Count == 0)
+        {
+            ModelState.AddModelError("", "At least one product line is required.");
+        }
+
         if (!ModelState.IsValid)
         {
-            model.GirlScouts = await BuildGirlScoutOptionsAsync();
-            model.Products = await BuildProductOptionsAsync();
+            await PopulateDropdowns(model);
             return View(model);
         }
+
+        var totalBoxes = model.Lines.Sum(l => l.QuantityBoxes);
+        var totalCases = model.Lines.Sum(l => l.QuantityCases);
 
         var batch = new InventoryBatch
         {
@@ -58,21 +67,27 @@ public class InventoryController : Controller
             PickupDate = model.PickupDate,
             Notes = model.Notes,
             GirlScoutId = model.GirlScoutId,
-            TotalBoxes = model.QuantityBoxes,
-            TotalCases = model.QuantityCases
-        };
-
-        var receipt = new InventoryReceipt
-        {
-            Id = Guid.NewGuid(),
-            InventoryBatchId = batch.Id,
-            ProductId = model.ProductId,
-            QuantityBoxes = model.QuantityBoxes,
-            QuantityCases = model.QuantityCases
+            TotalBoxes = totalBoxes,
+            TotalCases = totalCases
         };
 
         _dbContext.InventoryBatches.Add(batch);
-        _dbContext.InventoryReceipts.Add(receipt);
+
+        foreach (var line in model.Lines)
+        {
+            var receipt = new InventoryReceipt
+            {
+                Id = Guid.NewGuid(),
+                InventoryBatchId = batch.Id,
+                ProductId = line.ProductId,
+                QuantityBoxes = line.QuantityBoxes,
+                QuantityCases = line.QuantityCases,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.InventoryReceipts.Add(receipt);
+        }
+
         await _dbContext.SaveChangesAsync();
 
         return RedirectToAction(nameof(Index));
@@ -172,6 +187,26 @@ public class InventoryController : Controller
         };
 
         return View(vm);
+    }
+
+    private async Task PopulateDropdowns(InventoryBatchCreateViewModel model)
+    {
+        model.GirlScouts = await BuildGirlScoutOptionsAsync();
+        model.Products = await BuildProductOptionsAsync();
+        model.Statuses = new List<SelectListItem>
+        {
+            new("Received", "Received"),
+            new("Pending Pickup", "Pending Pickup"),
+            new("In Transit", "In Transit"),
+            new("Returned", "Returned")
+        };
+        model.BatchTypes = new List<SelectListItem>
+        {
+            new("Initial Order", "Initial Order"),
+            new("Restock", "Restock"),
+            new("Transfer", "Transfer"),
+            new("Donation", "Donation")
+        };
     }
 
     private async Task<List<SelectListItem>> BuildGirlScoutOptionsAsync()

@@ -27,6 +27,13 @@ public class Order
     [Column("notes")]
     public string? Notes { get; set; }
 
+    [Column("payment_method")]
+    [MaxLength(50)]
+    public string PaymentMethod { get; set; } = "Cash";
+
+    [Column("is_online_paid")]
+    public bool IsOnlinePaid { get; set; }
+
     [Column("customer_id")]
     public Guid? CustomerId { get; set; }
 
@@ -42,10 +49,14 @@ public class Order
     [Column("paid_amount")]
     public decimal? PaidAmount { get; set; }
 
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public Customer? Customer { get; set; }
     public GirlScout? GirlScout { get; set; }
     public List<OrderLineItem> LineItems { get; set; } = new();
     public List<Payback> Paybacks { get; set; } = new();
-
-    public string PaymentMethod { get; set; } = "Cash"; // or whatever default
 }
