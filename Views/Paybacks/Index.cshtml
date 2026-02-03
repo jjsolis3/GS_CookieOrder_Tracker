@@ -1,0 +1,34 @@
+@model IEnumerable<GS_CookieOrder_Tracker.Data.Payback>
+
+@{
+    ViewData["Title"] = "Paybacks";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Paybacks</h2>
+    <a class="btn btn-primary" asp-action="Create">New Payback</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Paid At</th>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Method</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var payback in Model)
+        {
+            <tr>
+                <td>@payback.PaidAt.ToString("yyyy-MM-dd")</td>
+                <td>@payback.Order?.OrderedAt.ToString("yyyy-MM-dd")</td>
+                <td>@payback.Customer?.Name</td>
+                <td>@payback.Amount.ToString("C")</td>
+                <td>@payback.Method</td>
+            </tr>
+        }
+    </tbody>
+</table>

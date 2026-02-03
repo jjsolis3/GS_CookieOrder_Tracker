@@ -1,0 +1,44 @@
+﻿@{
+	
+    ViewData["Heading"] = "CkEditor";
+}
+<div class="content-body">
+    <div class="container-fluid">
+        <!-- row -->
+        <div class="row">
+            <div class="col-xl-12 col-xxl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Form CkEditor</h4>
+                    </div>
+                    <div class="card-body custom-ekeditor">
+                        <div id="ckeditor"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section YashAdmin_style
+{
+	<!-- Start Page Level CSS -->
+	<link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
+	<!-- End Page Level CSS -->
+}
+
+@section YashAdmin_script
+{
+	<!--**********************************
+		Scripts
+	***********************************-->
+	<!-- Required vendors -->
+    <script src="~/yashadmin/vendor/global/global.min.js"></script>
+    <script src="~/yashadmin/vendor/bootstrap-select/dist/js/bootstrap-select.min.js"></script>
+
+    <script src="~/yashadmin/vendor/ckeditor/ckeditor.js"></script>
+    <script src="~/yashadmin/js/custom.min.js"></script>
+    <script src="~/yashadmin/js/deznav-init.js"></script>
+   
+    
+}
