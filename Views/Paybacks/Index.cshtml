@@ -4,31 +4,53 @@
     ViewData["Title"] = "Paybacks";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Paybacks</h2>
-    <a class="btn btn-primary" asp-action="Create">New Payback</a>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Paybacks</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> New Payback
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive-md table-hover">
+                        <thead>
+                            <tr>
+                                <th>Paid At</th>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payback in Model)
+                            {
+                                <tr>
+                                    <td>@payback.PaidAt.ToString("yyyy-MM-dd")</td>
+                                    <td>@payback.Order?.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                    <td>@payback.Customer?.Name</td>
+                                    <td><strong>@payback.Amount.ToString("C")</strong></td>
+                                    <td>
+                                        @{
+                                            var methodClass = payback.Method?.ToLower() switch
+                                            {
+                                                "cash" => "badge-success",
+                                                "card" => "badge-info",
+                                                "check" => "badge-warning",
+                                                _ => "badge-primary"
+                                            };
+                                        }
+                                        <span class="badge light @methodClass">@payback.Method</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Paid At</th>
-            <th>Order</th>
-            <th>Customer</th>
-            <th>Amount</th>
-            <th>Method</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var payback in Model)
-        {
-            <tr>
-                <td>@payback.PaidAt.ToString("yyyy-MM-dd")</td>
-                <td>@payback.Order?.OrderedAt.ToString("yyyy-MM-dd")</td>
-                <td>@payback.Customer?.Name</td>
-                <td>@payback.Amount.ToString("C")</td>
-                <td>@payback.Method</td>
-            </tr>
-        }
-    </tbody>
-</table>

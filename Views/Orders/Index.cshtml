@@ -4,35 +4,58 @@
     ViewData["Title"] = "Orders";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Orders</h2>
-    <a class="btn btn-primary" asp-action="Create">New Order</a>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Orders</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> New Order
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive-md table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order Date</th>
+                                <th>Customer</th>
+                                <th>Girl Scout</th>
+                                <th>Status</th>
+                                <th>Total Qty</th>
+                                <th>Total Price</th>
+                                <th>Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model)
+                            {
+                                <tr>
+                                    <td>@order.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                    <td>@order.Customer?.Name</td>
+                                    <td>@(order.GirlScout == null ? "Unassigned" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
+                                    <td>
+                                        @{
+                                            var statusClass = order.Status?.ToLower() switch
+                                            {
+                                                "pending" => "badge-warning",
+                                                "delivered" => "badge-success",
+                                                "cancelled" => "badge-danger",
+                                                "confirmed" => "badge-info",
+                                                _ => "badge-primary"
+                                            };
+                                        }
+                                        <span class="badge light @statusClass">@order.Status</span>
+                                    </td>
+                                    <td>@order.TotalQty</td>
+                                    <td>@order.TotalPrice?.ToString("C")</td>
+                                    <td>@order.PaidAmount?.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Order Date</th>
-            <th>Customer</th>
-            <th>Girl Scout</th>
-            <th>Status</th>
-            <th>Total Qty</th>
-            <th>Total Price</th>
-            <th>Paid</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var order in Model)
-        {
-            <tr>
-                <td>@order.OrderedAt.ToString("yyyy-MM-dd")</td>
-                <td>@order.Customer?.Name</td>
-                <td>@(order.GirlScout == null ? "Unassigned" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
-                <td>@order.Status</td>
-                <td>@order.TotalQty</td>
-                <td>@order.TotalPrice?.ToString("C")</td>
-                <td>@order.PaidAmount?.ToString("C")</td>
-            </tr>
-        }
-    </tbody>
-</table>

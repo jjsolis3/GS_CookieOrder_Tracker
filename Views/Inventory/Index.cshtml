@@ -4,33 +4,55 @@
     ViewData["Title"] = "Inventory";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Inventory Batches</h2>
-    <a class="btn btn-primary" asp-action="Create">New Receipt</a>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Inventory Batches</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> New Receipt
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive-md table-hover">
+                        <thead>
+                            <tr>
+                                <th>Pickup Date</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Girl Scout</th>
+                                <th>Total Boxes</th>
+                                <th>Total Cases</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var batch in Model)
+                            {
+                                <tr>
+                                    <td>@(batch.PickupDate?.ToString("yyyy-MM-dd") ?? "N/A")</td>
+                                    <td>
+                                        @{
+                                            var batchStatusClass = batch.Status?.ToLower() switch
+                                            {
+                                                "received" => "badge-success",
+                                                "pending" => "badge-warning",
+                                                "in_transit" => "badge-info",
+                                                _ => "badge-primary"
+                                            };
+                                        }
+                                        <span class="badge light @batchStatusClass">@batch.Status</span>
+                                    </td>
+                                    <td>@batch.BatchType</td>
+                                    <td>@(batch.GirlScout == null ? "Unassigned" : $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}")</td>
+                                    <td>@batch.TotalBoxes</td>
+                                    <td>@batch.TotalCases</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Pickup Date</th>
-            <th>Status</th>
-            <th>Type</th>
-            <th>Girl Scout</th>
-            <th>Total Boxes</th>
-            <th>Total Cases</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var batch in Model)
-        {
-            <tr>
-                <td>@(batch.PickupDate?.ToString("yyyy-MM-dd") ?? "N/A")</td>
-                <td>@batch.Status</td>
-                <td>@batch.BatchType</td>
-                <td>@(batch.GirlScout == null ? "Unassigned" : $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}")</td>
-                <td>@batch.TotalBoxes</td>
-                <td>@batch.TotalCases</td>
-            </tr>
-        }
-    </tbody>
-</table>

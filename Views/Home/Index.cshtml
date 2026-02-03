@@ -1,40 +1,85 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p class="lead">Use the shortcuts below to keep orders, inventory receipts, and paybacks up to date.</p>
+<div class="row">
+    <div class="col-xl-4 col-lg-6 col-sm-6">
+        <div class="card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h2 class="text-primary mb-0">Orders</h2>
+                        <p class="mb-0 text-muted">Capture new sales orders and track status, totals, and delivery dates.</p>
+                    </div>
+                    <div class="icon-box bg-primary-light rounded-circle">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path opacity="0.4" d="M16.191 2H7.81C4.77 2 3 3.78 3 6.83V17.16C3 20.26 4.77 22 7.81 22H16.191C19.28 22 21 20.26 21 17.16V6.83C21 3.78 19.28 2 16.191 2Z" fill="var(--primary)" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M8.08 6.65H11.069C11.5 6.65 11.85 7 11.85 7.429C11.85 7.87 11.5 8.22 11.069 8.22H8.08C7.649 8.22 7.3 7.87 7.3 7.44C7.3 7.01 7.649 6.66 8.08 6.65ZM15.92 12.74H8.08C7.649 12.74 7.3 12.39 7.3 11.96C7.3 11.53 7.649 11.179 8.08 11.179H15.92C16.35 11.179 16.7 11.53 16.7 11.96C16.7 12.39 16.35 12.74 15.92 12.74ZM15.92 17.31H8.08C7.78 17.35 7.49 17.2 7.33 16.95C7.17 16.69 7.17 16.36 7.33 16.11C7.49 15.85 7.78 15.71 8.08 15.74H15.92C16.319 15.78 16.62 16.12 16.62 16.53C16.62 16.929 16.319 17.27 15.92 17.31Z" fill="var(--primary)" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer border-0 pt-0">
+                <a class="btn btn-primary btn-sm me-2" asp-controller="Orders" asp-action="Create">New Order</a>
+                <a class="btn btn-outline-primary btn-sm" asp-controller="Orders" asp-action="Index">View Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-sm-6">
+        <div class="card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h2 class="text-success mb-0">Inventory</h2>
+                        <p class="mb-0 text-muted">Log inventory batches and the products you receive.</p>
+                    </div>
+                    <div class="icon-box bg-success-light rounded-circle">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path opacity="0.4" d="M2 11.08C2.05 13.42 2.19 17.42 2.21 17.86C2.28 18.8 2.64 19.75 3.2 20.42C3.99 21.37 4.95 21.79 6.29 21.79C8.15 21.8 10.19 21.8 12.18 21.8C14.18 21.8 16.11 21.8 17.75 21.79C19.07 21.79 20.06 21.36 20.84 20.42C21.4 19.75 21.76 18.79 21.81 17.86C21.83 17.49 21.93 13.14 21.99 11.08H2Z" fill="var(--bs-success)" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M10.21 14.56C10.11 14.92 9.76 15.15 9.38 15.1C6.83 14.75 4.4 13.84 2.34 12.48C2.13 12.34 2 12.11 2 11.86V8.39C2 6.29 3.71 4.58 5.82 4.58H7.78C7.97 3.13 9.2 2 10.7 2H13.29C14.79 2 16.02 3.13 16.21 4.58H18.18C20.28 4.58 21.99 6.29 21.99 8.39V11.86C21.99 12.11 21.86 12.34 21.65 12.48C19.59 13.85 17.14 14.76 14.58 15.11C14.54 15.12 14.51 15.12 14.47 15.12C14.13 15.12 13.83 14.89 13.75 14.55C13.54 13.76 12.82 13.2 11.99 13.2C11.15 13.2 10.43 13.74 10.21 14.56Z" fill="var(--bs-success)" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer border-0 pt-0">
+                <a class="btn btn-success btn-sm me-2" asp-controller="Inventory" asp-action="Create">New Receipt</a>
+                <a class="btn btn-outline-success btn-sm" asp-controller="Inventory" asp-action="Index">View Inventory</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-sm-6">
+        <div class="card overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h2 class="text-secondary mb-0">Paybacks</h2>
+                        <p class="mb-0 text-muted">Record repayments and track balances per order.</p>
+                    </div>
+                    <div class="icon-box bg-secondary-light rounded-circle">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M15.24 4.74C15.24 6.96 17.05 8.76 19.27 8.76C19.52 8.76 19.76 8.73 20 8.69V16.66C20 20.02 18.02 22 14.66 22H7.35C3.98 22 2 20.02 2 16.66V9.36C2 6 3.98 4 7.35 4H15.31C15.27 4.24 15.24 4.49 15.24 4.74ZM13.15 14.9L16.01 11.21V11.19C16.25 10.86 16.19 10.4 15.87 10.15C15.71 10.03 15.51 9.97 15.32 10C15.12 10.03 14.95 10.14 14.83 10.3L12.42 13.4L9.68 11.24C9.52 11.11 9.32 11.06 9.12 11.09C8.93 11.11 8.75 11.22 8.63 11.38L5.68 15.19C5.57 15.32 5.52 15.48 5.52 15.64C5.5 15.98 5.71 16.28 6.03 16.38C6.35 16.49 6.7 16.36 6.88 16.07L9.35 12.88L12.09 15.03C12.25 15.15 12.45 15.21 12.65 15.19C12.85 15.16 13.03 15.06 13.15 14.9Z" fill="var(--secondary)" />
+                            <circle opacity="0.4" cx="19.5" cy="4.5" r="2.5" fill="var(--secondary)" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer border-0 pt-0">
+                <a class="btn btn-secondary btn-sm me-2" asp-controller="Paybacks" asp-action="Create">New Payback</a>
+                <a class="btn btn-outline-secondary btn-sm" asp-controller="Paybacks" asp-action="Index">View Paybacks</a>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-4 mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Orders</h5>
-                <p class="card-text">Capture new sales orders and track status, totals, and delivery dates.</p>
-                <a class="btn btn-primary" asp-controller="Orders" asp-action="Create">New Order</a>
-                <a class="btn btn-outline-secondary ms-2" asp-controller="Orders" asp-action="Index">View Orders</a>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Welcome to GS Cookie Order Tracker</h4>
             </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Inventory</h5>
-                <p class="card-text">Log inventory batches and the products you receive.</p>
-                <a class="btn btn-primary" asp-controller="Inventory" asp-action="Create">New Receipt</a>
-                <a class="btn btn-outline-secondary ms-2" asp-controller="Inventory" asp-action="Index">View Inventory</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Paybacks</h5>
-                <p class="card-text">Record repayments and track balances per order.</p>
-                <a class="btn btn-primary" asp-controller="Paybacks" asp-action="Create">New Payback</a>
-                <a class="btn btn-outline-secondary ms-2" asp-controller="Paybacks" asp-action="Index">View Paybacks</a>
+                <p>Use the shortcuts above or the sidebar navigation to keep orders, inventory receipts, and paybacks up to date.</p>
+                <p class="mb-0 text-muted">This application connects to the same Supabase backend as the GS OrderTracking mobile app.</p>
             </div>
         </div>
     </div>

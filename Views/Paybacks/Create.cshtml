@@ -4,42 +4,51 @@
     ViewData["Title"] = "New Payback";
 }
 
-<h2 class="mb-3">New Payback</h2>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">New Payback</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="OrderId" class="form-label">Order</label>
+                            <select asp-for="OrderId" asp-items="Model.Orders" class="form-select default-select"></select>
+                            <span asp-validation-for="OrderId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="CustomerId" class="form-label">Customer</label>
+                            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select default-select"></select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="PaidAt" class="form-label">Paid At</label>
+                            <input asp-for="PaidAt" type="datetime-local" class="form-control" />
+                            <span asp-validation-for="PaidAt" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Amount" class="form-label">Amount</label>
+                            <input asp-for="Amount" class="form-control" />
+                            <span asp-validation-for="Amount" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Method" class="form-label">Method</label>
+                            <input asp-for="Method" class="form-control" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label asp-for="Notes" class="form-label">Notes</label>
+                            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
 
-<form asp-action="Create" method="post">
-    @Html.AntiForgeryToken()
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label asp-for="OrderId" class="form-label"></label>
-            <select asp-for="OrderId" asp-items="Model.Orders" class="form-select"></select>
-            <span asp-validation-for="OrderId" class="text-danger"></span>
-        </div>
-        <div class="col-md-6 mb-3">
-            <label asp-for="CustomerId" class="form-label"></label>
-            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"></select>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="PaidAt" class="form-label"></label>
-            <input asp-for="PaidAt" type="datetime-local" class="form-control" />
-            <span asp-validation-for="PaidAt" class="text-danger"></span>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="Amount" class="form-label"></label>
-            <input asp-for="Amount" class="form-control" />
-            <span asp-validation-for="Amount" class="text-danger"></span>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="Method" class="form-label"></label>
-            <input asp-for="Method" class="form-control" />
-        </div>
-        <div class="col-12 mb-3">
-            <label asp-for="Notes" class="form-label"></label>
-            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Save Payback</button>
+                        <a class="btn btn-outline-light ms-2" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-
-    <div class="mt-3">
-        <button type="submit" class="btn btn-primary">Save Payback</button>
-        <a class="btn btn-outline-secondary ms-2" asp-action="Index">Cancel</a>
-    </div>
-</form>
+</div>

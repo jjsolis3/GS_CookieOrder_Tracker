@@ -1,31 +1,23 @@
-html {
-  font-size: 14px;
+/* GS Cookie Order Tracker - Minimal overrides for Yash Admin theme */
+
+/* Icon box utility for dashboard cards */
+.icon-box {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+.bg-primary-light {
+    background-color: rgba(69, 43, 144, 0.1);
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.bg-success-light {
+    background-color: rgba(58, 155, 148, 0.1);
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
-
-body {
-  margin-bottom: 60px;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+.bg-secondary-light {
+    background-color: rgba(248, 185, 64, 0.1);
 }
