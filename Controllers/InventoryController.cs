@@ -78,6 +78,52 @@ public class InventoryController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>Current stock = boxes received via inventory receipts minus boxes sold from personal inventory.</summary>
+    public async Task<IActionResult> Stock()
+    {
+        var received = await _dbContext.InventoryReceipts
+            .Include(r => r.Product)
+            .GroupBy(r => new { r.ProductId, r.Product!.Name })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * (r.Product!.BoxesPerCase)) })
+            .ToListAsync();
+
+        var soldPersonal = await _dbContext.OrderLineItems
+            .Where(li => li.InventorySource == "Personal")
+            .GroupBy(li => li.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
+            .ToListAsync();
+
+        var soldTroop = await _dbContext.OrderLineItems
+            .Where(li => li.InventorySource == "Troop")
+            .GroupBy(li => li.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
+            .ToListAsync();
+
+        var products = received.Select(r =>
+        {
+            var sp = soldPersonal.FirstOrDefault(s => s.ProductId == r.ProductId);
+            var st = soldTroop.FirstOrDefault(s => s.ProductId == r.ProductId);
+            return new ProductStockRow
+            {
+                ProductId = r.ProductId,
+                ProductName = r.Name,
+                BoxesReceived = r.Boxes,
+                BoxesSoldPersonal = sp?.Boxes ?? 0,
+                BoxesSoldTroop = st?.Boxes ?? 0
+            };
+        }).OrderBy(p => p.ProductName).ToList();
+
+        var vm = new InventoryStockViewModel
+        {
+            Products = products,
+            TotalBoxesReceived = products.Sum(p => p.BoxesReceived),
+            TotalBoxesSold = products.Sum(p => p.BoxesSoldPersonal + p.BoxesSoldTroop),
+            TotalBoxesOnHand = products.Sum(p => p.BoxesOnHand)
+        };
+
+        return View(vm);
+    }
+
     private async Task<List<SelectListItem>> BuildGirlScoutOptionsAsync()
     {
         var scouts = await _dbContext.GirlScouts

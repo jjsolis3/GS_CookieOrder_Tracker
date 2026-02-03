@@ -18,9 +18,11 @@
                     <table class="table table-responsive-md table-hover">
                         <thead>
                             <tr>
-                                <th>Order Date</th>
+                                <th>Date</th>
+                                <th>Type</th>
                                 <th>Customer</th>
                                 <th>Girl Scout</th>
+                                <th>Products</th>
                                 <th>Status</th>
                                 <th>Total Qty</th>
                                 <th>Total Price</th>
@@ -30,23 +32,34 @@
                         <tbody>
                             @foreach (var order in Model)
                             {
+                                var typeClass = order.OrderType switch
+                                {
+                                    "Direct Sale" => "badge-primary",
+                                    "Online Delivery" => "badge-info",
+                                    "Booth Sale" => "badge-success",
+                                    _ => "badge-secondary"
+                                };
+                                var statusClass = order.Status?.ToLower() switch
+                                {
+                                    "pending" => "badge-warning",
+                                    "paid" => "badge-success",
+                                    "delivered" => "badge-success",
+                                    "cancelled" => "badge-danger",
+                                    "confirmed" => "badge-info",
+                                    _ => "badge-primary"
+                                };
                                 <tr>
                                     <td>@order.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                    <td><span class="badge light @typeClass">@order.OrderType</span></td>
                                     <td>@order.Customer?.Name</td>
                                     <td>@(order.GirlScout == null ? "Unassigned" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
                                     <td>
-                                        @{
-                                            var statusClass = order.Status?.ToLower() switch
-                                            {
-                                                "pending" => "badge-warning",
-                                                "delivered" => "badge-success",
-                                                "cancelled" => "badge-danger",
-                                                "confirmed" => "badge-info",
-                                                _ => "badge-primary"
-                                            };
+                                        @if (order.LineItems.Any())
+                                        {
+                                            <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
                                         }
-                                        <span class="badge light @statusClass">@order.Status</span>
                                     </td>
+                                    <td><span class="badge light @statusClass">@order.Status</span></td>
                                     <td>@order.TotalQty</td>
                                     <td>@order.TotalPrice?.ToString("C")</td>
                                     <td>@order.PaidAmount?.ToString("C")</td>

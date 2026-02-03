@@ -17,15 +17,53 @@ public class PaybacksController : Controller
         _dbContext = dbContext;
     }
 
+    /// <summary>Calculated payback report: what is owed from non-online orders, minus what has been paid.</summary>
     public async Task<IActionResult> Index()
     {
-        var paybacks = await _dbContext.Paybacks
-            .Include(payback => payback.Order)
-            .Include(payback => payback.Customer)
-            .OrderByDescending(payback => payback.PaidAt)
+        // Line items from orders that require payback (exclude Online Delivery -- already paid online)
+        var owedByProduct = await _dbContext.OrderLineItems
+            .Include(li => li.Order)
+            .Include(li => li.Product)
+            .Where(li => li.Order!.OrderType != "Online Delivery")
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .Select(g => new PaybackProductRow
+            {
+                ProductName = g.Key.Name,
+                PricePerBox = g.Key.PricePerBox,
+                BoxesSold = g.Sum(li => li.QuantityBoxes)
+            })
+            .OrderBy(r => r.ProductName)
             .ToListAsync();
 
-        return View(paybacks);
+        var totalOwed = owedByProduct.Sum(r => r.AmountOwed);
+
+        var totalPaid = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var recentPayments = await _dbContext.Paybacks
+            .Include(p => p.Order).ThenInclude(o => o!.Customer)
+            .OrderByDescending(p => p.PaidAt)
+            .Take(20)
+            .Select(p => new PaybackPaymentRow
+            {
+                PaidAt = p.PaidAt,
+                Amount = p.Amount,
+                Method = p.Method,
+                Notes = p.Notes,
+                OrderInfo = p.Order != null
+                    ? p.Order.OrderedAt.ToString("yyyy-MM-dd") + " - " + (p.Order.Customer != null ? p.Order.Customer.Name : "")
+                    : ""
+            })
+            .ToListAsync();
+
+        var vm = new PaybackSummaryViewModel
+        {
+            ByProduct = owedByProduct,
+            TotalOwed = totalOwed,
+            TotalPaid = totalPaid,
+            RecentPayments = recentPayments
+        };
+
+        return View(vm);
     }
 
     [HttpGet]
@@ -71,19 +109,20 @@ public class PaybacksController : Controller
     private async Task<List<SelectListItem>> BuildOrderOptionsAsync()
     {
         return await _dbContext.Orders
-            .Include(order => order.Customer)
-            .OrderByDescending(order => order.OrderedAt)
-            .Select(order => new SelectListItem(
-                $"{order.OrderedAt:yyyy-MM-dd} - {order.Customer!.Name}",
-                order.Id.ToString()))
+            .Include(o => o.Customer)
+            .Where(o => o.OrderType != "Online Delivery")
+            .OrderByDescending(o => o.OrderedAt)
+            .Select(o => new SelectListItem(
+                $"{o.OrderedAt:yyyy-MM-dd} - {o.Customer!.Name} ({o.OrderType})",
+                o.Id.ToString()))
             .ToListAsync();
     }
 
     private async Task<List<SelectListItem>> BuildCustomerOptionsAsync()
     {
         var customers = await _dbContext.Customers
-            .OrderBy(customer => customer.Name)
-            .Select(customer => new SelectListItem(customer.Name, customer.Id.ToString()))
+            .OrderBy(c => c.Name)
+            .Select(c => new SelectListItem(c.Name, c.Id.ToString()))
             .ToListAsync();
 
         customers.Insert(0, new SelectListItem("Unassigned", ""));

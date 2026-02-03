@@ -1,32 +1,107 @@
 using System.Diagnostics;
+using GS_CookieOrder_Tracker.Data;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-namespace GS_CookieOrder_Tracker.Controllers
+namespace GS_CookieOrder_Tracker.Controllers;
+
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+    private readonly ILogger<HomeController> _logger;
+    private readonly AppDbContext _dbContext;
+
+    public HomeController(ILogger<HomeController> logger, AppDbContext dbContext)
     {
-        private readonly ILogger<HomeController> _logger;
+        _logger = logger;
+        _dbContext = dbContext;
+    }
 
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
+    public async Task<IActionResult> Index()
+    {
+        // Inventory totals
+        var received = await _dbContext.InventoryReceipts
+            .Include(r => r.Product)
+            .SumAsync(r => (int?)(r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase)) ?? 0;
 
-        public IActionResult Index()
-        {
-            return View();
-        }
+        var soldPersonal = await _dbContext.OrderLineItems
+            .Where(li => li.InventorySource == "Personal")
+            .SumAsync(li => (int?)li.QuantityBoxes) ?? 0;
 
-        public IActionResult Privacy()
-        {
-            return View();
-        }
+        var soldAll = await _dbContext.OrderLineItems
+            .SumAsync(li => (int?)li.QuantityBoxes) ?? 0;
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        var activeProducts = await _dbContext.Products.CountAsync(p => p.Active);
+
+        // Orders
+        var totalOrders = await _dbContext.Orders.CountAsync();
+        var pendingOrders = await _dbContext.Orders.CountAsync(o => o.Status == "Pending");
+        var totalRevenue = await _dbContext.Orders.SumAsync(o => (decimal?)o.TotalPrice) ?? 0;
+
+        // Paybacks
+        var totalOwed = await _dbContext.OrderLineItems
+            .Include(li => li.Order)
+            .Where(li => li.Order!.OrderType != "Online Delivery")
+            .SumAsync(li => (decimal?)(li.QuantityBoxes * li.UnitPrice)) ?? 0;
+
+        var totalPaid = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0;
+
+        // Top sellers
+        var topSellers = await _dbContext.OrderLineItems
+            .Include(li => li.Product)
+            .GroupBy(li => li.Product!.Name)
+            .Select(g => new TopSellerRow
+            {
+                ProductName = g.Key,
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                Revenue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+            })
+            .OrderByDescending(r => r.BoxesSold)
+            .Take(5)
+            .ToListAsync();
+
+        // Recent orders
+        var recentOrders = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .OrderByDescending(o => o.OrderedAt)
+            .Take(10)
+            .Select(o => new RecentOrderRow
+            {
+                OrderedAt = o.OrderedAt,
+                CustomerName = o.Customer != null ? o.Customer.Name : "",
+                OrderType = o.OrderType,
+                TotalQty = o.TotalQty ?? 0,
+                TotalPrice = o.TotalPrice ?? 0,
+                Status = o.Status
+            })
+            .ToListAsync();
+
+        var vm = new DashboardViewModel
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+            TotalBoxesOnHand = received - soldPersonal,
+            TotalBoxesReceived = received,
+            TotalBoxesSold = soldAll,
+            ActiveProducts = activeProducts,
+            TotalOrders = totalOrders,
+            PendingOrders = pendingOrders,
+            TotalRevenue = totalRevenue,
+            TotalOwed = totalOwed,
+            TotalPaid = totalPaid,
+            TopSellers = topSellers,
+            RecentOrders = recentOrders
+        };
+
+        return View(vm);
+    }
+
+    public IActionResult Privacy()
+    {
+        return View();
+    }
+
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 }
