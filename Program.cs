@@ -1,5 +1,5 @@
+using GS_CookieOrder_Tracker.Data;
 using Microsoft.EntityFrameworkCore;
-using YourApp.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
