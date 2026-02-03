@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <partial name="YashAdmin/_Meta" />
+    <title>YashAdmin -Sales Management System Admin Dashboard ASP.NET Core MVC Template | DexignZone</title>
+    <!-- Favicon icon -->
+    <link rel="shortcut icon" type="image/png" href="~/yashadmin/images/favicon.png">
+    @RenderSection("YashAdmin_style", false)
+    <link href="~/yashadmin/vendor/bootstrap-select/dist/css/bootstrap-select.min.css" rel="stylesheet">
+    <!-- Style css -->
+    <link class="main-css" href="~/yashadmin/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <partial name="YashAdmin/_PreLoader" />
+    <!--**********************************
+        Main wrapper start
+    ***********************************-->
+    <div id="main-wrapper">
+        <partial name="YashAdmin/_NevHeader" />
+        <partial name="YashAdmin/_Chatbox" />
+        <partial name="YashAdmin/_Header" />
+        <partial name="YashAdmin/_Sidebar" />
+        <!--**********************************
+            Content body start
+        ***********************************-->
+        @RenderBody()
+        <!--**********************************
+            Content body end
+        ***********************************-->
+    </div>
+    <!--**********************************
+        Main wrapper end
+    ***********************************-->
+    @RenderSection("YashAdmin_script", false)
+</body>
+</html>
