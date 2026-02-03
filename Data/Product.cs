@@ -48,6 +48,13 @@ public class Product
     [Column("barcode")]
     public string? Barcode { get; set; }
 
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public List<OrderLineItem> OrderLineItems { get; set; } = new();
     public List<InventoryReceipt> InventoryReceipts { get; set; } = new();
+    public List<InventoryReturn> InventoryReturns { get; set; } = new();
 }

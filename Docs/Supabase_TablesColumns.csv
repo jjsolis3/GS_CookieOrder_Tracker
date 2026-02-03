@@ -1,0 +1,66 @@
+schema_name,table_name,column_position,column_name,data_type,is_nullable,column_comment,table_comment
+public,booth_sales,1,id,uuid,NO,null,null
+public,booth_sales,2,booth_date,date,NO,null,null
+public,booth_sales,3,location,text,YES,null,null
+public,booth_sales,4,product_id,uuid,NO,null,null
+public,booth_sales,5,quantity_boxes,integer,NO,null,null
+public,booth_sales,6,from_personal_inventory,boolean,NO,null,null
+public,booth_sales,7,notes,text,YES,null,null
+public,booth_sales,8,created_at,timestamp with time zone,NO,null,null
+public,booth_sales,9,updated_at,timestamp with time zone,NO,null,null
+public,customers,1,id,uuid,NO,null,null
+public,customers,2,name,text,NO,null,null
+public,customers,3,phone,text,YES,null,null
+public,customers,4,email,text,YES,null,null
+public,customers,5,notes,text,YES,null,null
+public,customers,6,created_at,timestamp with time zone,NO,null,null
+public,customers,7,updated_at,timestamp with time zone,NO,null,null
+public,inventory_receipts,1,id,uuid,NO,null,null
+public,inventory_receipts,2,received_at,date,NO,null,null
+public,inventory_receipts,3,product_id,uuid,NO,null,null
+public,inventory_receipts,4,quantity_boxes,integer,NO,null,null
+public,inventory_receipts,5,quantity_cases,integer,NO,null,null
+public,inventory_receipts,6,notes,text,YES,null,null
+public,inventory_receipts,7,created_at,timestamp with time zone,NO,null,null
+public,inventory_receipts,8,updated_at,timestamp with time zone,NO,null,null
+public,inventory_returns,1,id,uuid,NO,null,null
+public,inventory_returns,2,product_id,uuid,YES,null,null
+public,inventory_returns,3,quantity_boxes,integer,NO,null,null
+public,inventory_returns,4,quantity_cases,integer,NO,null,null
+public,inventory_returns,5,returned_at,timestamp with time zone,NO,null,null
+public,inventory_returns,6,reason,character varying(200),YES,null,null
+public,inventory_returns,7,notes,text,YES,null,null
+public,order_line_items,1,id,uuid,NO,null,null
+public,order_line_items,2,order_id,uuid,NO,null,null
+public,order_line_items,3,product_id,uuid,NO,null,null
+public,order_line_items,4,quantity_boxes,integer,NO,null,null
+public,order_line_items,5,unit_price,"numeric(10,2)",NO,null,null
+public,order_line_items,6,created_at,timestamp with time zone,NO,null,null
+public,order_line_items,7,updated_at,timestamp with time zone,NO,null,null
+public,order_line_items,8,inventory_source,character varying(20),YES,null,null
+public,orders,1,id,uuid,NO,null,null
+public,orders,2,customer_id,uuid,YES,null,null
+public,orders,3,order_type,text,NO,null,null
+public,orders,4,payment_method,text,NO,null,null
+public,orders,5,ordered_at,timestamp with time zone,NO,null,null
+public,orders,6,is_online_paid,boolean,NO,null,null
+public,orders,7,notes,text,YES,null,null
+public,orders,8,created_at,timestamp with time zone,NO,null,null
+public,orders,9,updated_at,timestamp with time zone,NO,null,null
+public,orders,10,status,text,NO,null,null
+public,paybacks,1,id,uuid,NO,null,null
+public,paybacks,2,paid_at,timestamp with time zone,NO,null,null
+public,paybacks,3,amount,"numeric(10,2)",NO,null,null
+public,paybacks,4,method,text,NO,null,null
+public,paybacks,5,notes,text,YES,null,null
+public,paybacks,6,created_at,timestamp with time zone,NO,null,null
+public,paybacks,7,updated_at,timestamp with time zone,NO,null,null
+public,products,1,id,uuid,NO,null,null
+public,products,2,name,text,NO,null,null
+public,products,3,sku,text,YES,null,null
+public,products,4,price_per_box,"numeric(10,2)",NO,null,null
+public,products,5,boxes_per_case,integer,NO,null,null
+public,products,6,active,boolean,NO,null,null
+public,products,7,created_at,timestamp with time zone,NO,null,null
+public,products,8,updated_at,timestamp with time zone,NO,null,null
+public,products,9,description,text,YES,null,null

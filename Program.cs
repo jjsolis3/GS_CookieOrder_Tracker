@@ -1,4 +1,5 @@
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient<SupabaseAuthService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("db");

@@ -2,30 +2,59 @@
 
 @{
     ViewData["Title"] = "Login";
+    Layout = "_LayoutAuth";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h2 class="mb-3">Sign in</h2>
-        <p class="text-muted">Use the admin credentials configured in <code>appsettings.Development.json</code>.</p>
+<div class="authincation h-100">
+    <div class="container h-100">
+        <div class="row justify-content-center h-100 align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="authincation-content">
+                    <div class="row no-gutters">
+                        <div class="col-xl-12">
+                            <div class="auth-form">
+                                <div class="text-center mb-3">
+                                    <svg width="50" height="47" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M31.3287 2.96046L26.3411 0.0805375C26.1549 -0.0268458 25.9256 -0.0268458 25.7394 0.0805375C19.754 3.53731 12.3785 3.53785 6.39259 0.0816161L6.39043 0.0805375C6.20426 -0.0268458 5.97493 -0.0268458 5.78876 0.0805375L0.801104 2.95992C0.614937 3.0673 0.5 3.26588 0.5 3.48119V9.24049C0.5 9.4558 0.614937 9.65438 0.801104 9.76176C6.78759 13.2169 10.4753 19.6038 10.4753 26.5162V26.5184C10.4753 26.7332 10.5903 26.9323 10.7764 27.0397L15.7641 29.9196C15.8574 29.9736 15.961 30 16.0652 30C16.1693 30 16.2729 29.973 16.3663 29.9196L21.3539 27.0397C21.5401 26.9323 21.655 26.7337 21.655 26.5184C21.6545 19.6059 25.3422 13.2185 31.3287 9.7623L31.3298 9.76176C31.516 9.65438 31.6309 9.4558 31.6309 9.24049V3.48173C31.6293 3.26642 31.5149 3.06784 31.3287 2.96046Z" fill="var(--primary)" />
+                                    </svg>
+                                </div>
+                                <h4 class="text-center mb-4">GS Cookie Order Tracker</h4>
+                                <p class="text-center text-muted mb-4">Sign in to your account</p>
 
-        <form asp-action="Login" method="post">
-            @Html.AntiForgeryToken()
-            <div class="mb-3">
-                <label asp-for="Username" class="form-label"></label>
-                <input asp-for="Username" class="form-control" />
-                <span asp-validation-for="Username" class="text-danger"></span>
+                                <form asp-action="Login" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                                    <div class="mb-3">
+                                        <label asp-for="Username" class="form-label mb-1 fw-semibold">Email</label>
+                                        <input asp-for="Username" class="form-control" placeholder="Enter email" />
+                                        <span asp-validation-for="Username" class="text-danger"></span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label asp-for="Password" class="form-label mb-1 fw-semibold">Password</label>
+                                        <input asp-for="Password" class="form-control" placeholder="Enter password" />
+                                        <span asp-validation-for="Password" class="text-danger"></span>
+                                    </div>
+                                    <div class="row d-flex justify-content-between mt-4 mb-2">
+                                        <div class="mb-3">
+                                            <div class="form-check custom-checkbox ms-1">
+                                                <input asp-for="RememberMe" class="form-check-input" id="basic_checkbox_1" />
+                                                <label class="form-check-label" for="basic_checkbox_1">Remember me</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label asp-for="Password" class="form-label"></label>
-                <input asp-for="Password" class="form-control" />
-                <span asp-validation-for="Password" class="text-danger"></span>
-            </div>
-            <div class="form-check mb-3">
-                <input asp-for="RememberMe" class="form-check-input" />
-                <label asp-for="RememberMe" class="form-check-label"></label>
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

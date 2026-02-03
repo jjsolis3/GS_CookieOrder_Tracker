@@ -1,0 +1,51 @@
+@model List<GS_CookieOrder_Tracker.Data.GirlScout>
+
+@{
+    ViewData["Title"] = "Girl Scouts";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Girl Scouts</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> Add Girl Scout
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive-md table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Troop #</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var scout in Model)
+                            {
+                                <tr>
+                                    <td><strong>@scout.FirstName @scout.LastName</strong></td>
+                                    <td>@(scout.TroopNumber ?? "—")</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-outline-primary btn-sm" asp-action="Edit" asp-route-id="@scout.Id">
+                                            <i class="fa fa-pencil-alt"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.Any())
+                            {
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No girl scouts added yet</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

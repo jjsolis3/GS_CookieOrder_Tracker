@@ -22,6 +22,20 @@ public class OrderLineItem
     [Column("unit_price")]
     public decimal UnitPrice { get; set; }
 
+    /// <summary>
+    /// "Personal" = deducts from the girl scout's personal inventory.
+    /// "Troop"    = uses troop-provided stock (no personal inventory deduction).
+    /// </summary>
+    [Column("inventory_source")]
+    [MaxLength(20)]
+    public string InventorySource { get; set; } = "Personal";
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public Order? Order { get; set; }
     public Product? Product { get; set; }
 }

@@ -7,15 +7,27 @@
     <UserSecretsId>c592b25e-0ddd-48a0-8f50-42a05823f5c2</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Exclude the Ref folder from compilation; it is a read-only theme reference -->
+  <ItemGroup>
+    <Compile Remove="Ref\**" />
+    <Content Remove="Ref\**" />
+    <EmbeddedResource Remove="Ref\**" />
+    <None Remove="Ref\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Docs\" />
   </ItemGroup>
 
 </Project>

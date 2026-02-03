@@ -1,0 +1,56 @@
+@model IEnumerable<GS_CookieOrder_Tracker.Data.Product>
+
+@{
+    ViewData["Title"] = "Products";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Products</h4>
+                <a asp-action="Create" class="btn btn-primary btn-sm">
+                    <i class="fa fa-plus me-1"></i> Add Product
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive-md">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>SKU</th>
+                                <th>Price/Box</th>
+                                <th>Boxes/Case</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in Model)
+                            {
+                                <tr>
+                                    <td><strong>@product.Name</strong></td>
+                                    <td>@product.Sku</td>
+                                    <td>@product.PricePerBox.ToString("C")</td>
+                                    <td>@product.BoxesPerCase</td>
+                                    <td>@product.Category</td>
+                                    <td>
+                                        @if (product.Active)
+                                        {
+                                            <span class="badge light badge-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge light badge-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

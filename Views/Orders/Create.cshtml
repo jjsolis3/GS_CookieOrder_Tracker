@@ -4,66 +4,272 @@
     ViewData["Title"] = "New Order";
 }
 
-<h2 class="mb-3">New Order</h2>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">New Order</h4>
+            </div>
+            <div class="card-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-<form asp-action="Create" method="post">
-    @Html.AntiForgeryToken()
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label asp-for="CustomerId" class="form-label"></label>
-            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"></select>
-            <span asp-validation-for="CustomerId" class="text-danger"></span>
-        </div>
-        <div class="col-md-6 mb-3">
-            <label asp-for="GirlScoutId" class="form-label">Girl Scout</label>
-            <select asp-for="GirlScoutId" asp-items="Model.GirlScouts" class="form-select"></select>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="OrderType" class="form-label"></label>
-            <input asp-for="OrderType" class="form-control" />
-            <span asp-validation-for="OrderType" class="text-danger"></span>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="Status" class="form-label"></label>
-            <input asp-for="Status" class="form-control" />
-            <span asp-validation-for="Status" class="text-danger"></span>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="OrderedAt" class="form-label"></label>
-            <input asp-for="OrderedAt" type="datetime-local" class="form-control" />
-            <span asp-validation-for="OrderedAt" class="text-danger"></span>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="DeliveryDate" class="form-label"></label>
-            <input asp-for="DeliveryDate" type="date" class="form-control" />
-        </div>
-        <div class="col-md-8 mb-3">
-            <label asp-for="Notes" class="form-label"></label>
-            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="OrderType" class="form-label">Order Type</label>
+                            <select asp-for="OrderType" asp-items="Model.OrderTypes" class="form-select" id="orderType"></select>
+                            <span asp-validation-for="OrderType" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="CustomerId" class="form-label">
+                                Customer
+                                <a href="javascript:void(0)" id="openNewCustomerModal" class="ms-2 small"><i class="fa fa-plus"></i> New Customer</a>
+                            </label>
+                            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select" id="customerSelect"></select>
+                            <span asp-validation-for="CustomerId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="GirlScoutId" class="form-label">Girl Scout</label>
+                            <select asp-for="GirlScoutId" asp-items="Model.GirlScouts" class="form-select"></select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="PaymentMethod" class="form-label">Payment Method</label>
+                            <select asp-for="PaymentMethod" asp-items="Model.PaymentMethods" class="form-select" id="paymentMethod"></select>
+                            <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="OrderedAt" class="form-label">Order Date</label>
+                            <input asp-for="OrderedAt" type="date" class="form-control" />
+                            <span asp-validation-for="OrderedAt" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3" id="deliveryDateGroup">
+                            <label asp-for="DeliveryDate" class="form-label">Delivery Date</label>
+                            <input asp-for="DeliveryDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label asp-for="Notes" class="form-label">Notes</label>
+                            <textarea asp-for="Notes" class="form-control" rows="1"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+                        <h5 class="card-title mb-0">Line Items</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="addLineBtn">
+                            <i class="fa fa-plus me-1"></i> Add Product
+                        </button>
+                    </div>
+                    <hr>
+
+                    <div id="lineItemsContainer">
+                        @for (var i = 0; i < Model.LineItems.Count; i++)
+                        {
+                            <div class="row line-item align-items-end mb-2" data-index="@i">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Product</label>
+                                    <select name="LineItems[@i].ProductId" class="form-select product-select">
+                                        <option value="">-- select --</option>
+                                        @foreach (var p in Model.Products)
+                                        {
+                                            var price = Model.ProductPrices.GetValueOrDefault(p.Value, 0);
+                                            if (p.Value == Model.LineItems[i].ProductId.ToString())
+                                            {
+                                                <option value="@p.Value" data-price="@price" selected="selected">@p.Text</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@p.Value" data-price="@price">@p.Text</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <label class="form-label">Boxes</label>
+                                    <input name="LineItems[@i].QuantityBoxes" type="number" min="1" value="@Model.LineItems[i].QuantityBoxes" class="form-control" />
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <label class="form-label">Unit Price</label>
+                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control" readonly />
+                                </div>
+                                <div class="col-md-2 mb-2 inv-source-col">
+                                    <label class="form-label">Inv. Source</label>
+                                    <select name="LineItems[@i].InventorySource" class="form-select inv-source-select">
+                                        @foreach (var s in Model.InventorySources)
+                                        {
+                                            <option value="@s.Value" selected="@(s.Value == Model.LineItems[i].InventorySource)">@s.Text</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100">
+                                        <i class="fa fa-trash"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Save Order</button>
+                        <a class="btn btn-outline-light ms-2" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+</div>
 
-    <h5 class="mt-3">Line Item</h5>
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label asp-for="ProductId" class="form-label"></label>
-            <select asp-for="ProductId" asp-items="Model.Products" class="form-select"></select>
-            <span asp-validation-for="ProductId" class="text-danger"></span>
-        </div>
-        <div class="col-md-3 mb-3">
-            <label asp-for="QuantityBoxes" class="form-label"></label>
-            <input asp-for="QuantityBoxes" class="form-control" />
-            <span asp-validation-for="QuantityBoxes" class="text-danger"></span>
-        </div>
-        <div class="col-md-3 mb-3">
-            <label asp-for="UnitPrice" class="form-label"></label>
-            <input asp-for="UnitPrice" class="form-control" />
-            <span asp-validation-for="UnitPrice" class="text-danger"></span>
+<!-- ═══════════ NEW CUSTOMER MODAL ═══════════ -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="custModalError" class="text-danger mb-2 d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                    <input id="custName" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input id="custEmail" type="email" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input id="custPhone" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="custSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save Customer
+                </button>
+            </div>
         </div>
     </div>
+</div>
 
-    <div class="mt-3">
-        <button type="submit" class="btn btn-primary">Save Order</button>
-        <a class="btn btn-outline-secondary ms-2" asp-action="Index">Cancel</a>
-    </div>
-</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Cache product options HTML from the first row for reuse
+        var productOptionsHtml = document.querySelector('.line-item .product-select').innerHTML;
+        var invSourceOptionsHtml = document.querySelector('.inv-source-select') ? document.querySelector('.inv-source-select').innerHTML : '<option value="Personal">Personal</option><option value="Troop">Troop</option>';
+
+        // Auto-fill unit price when a product is selected
+        function onProductChange(selectEl) {
+            var opt = selectEl.options[selectEl.selectedIndex];
+            var price = opt && opt.dataset.price ? opt.dataset.price : '0';
+            var row = selectEl.closest('.line-item');
+            var priceInput = row.querySelector('input[name$=".UnitPrice"]');
+            if (priceInput) priceInput.value = price;
+        }
+
+        // Listen for product changes on all current and future rows (event delegation)
+        document.getElementById('lineItemsContainer').addEventListener('change', function (e) {
+            if (e.target.classList.contains('product-select')) {
+                onProductChange(e.target);
+            }
+        });
+
+        document.getElementById('addLineBtn').addEventListener('click', function () {
+            var container = document.getElementById('lineItemsContainer');
+            var idx = container.querySelectorAll('.line-item').length;
+            var div = document.createElement('div');
+            div.className = 'row line-item align-items-end mb-2';
+            div.setAttribute('data-index', idx);
+            div.innerHTML =
+                '<div class="col-md-4 mb-2"><label class="form-label">Product</label>' +
+                '<select name="LineItems[' + idx + '].ProductId" class="form-select product-select">' + productOptionsHtml + '</select></div>' +
+                '<div class="col-md-2 mb-2"><label class="form-label">Boxes</label>' +
+                '<input name="LineItems[' + idx + '].QuantityBoxes" type="number" min="1" value="1" class="form-control" /></div>' +
+                '<div class="col-md-2 mb-2"><label class="form-label">Unit Price</label>' +
+                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control" readonly /></div>' +
+                '<div class="col-md-2 mb-2 inv-source-col"><label class="form-label">Inv. Source</label>' +
+                '<select name="LineItems[' + idx + '].InventorySource" class="form-select inv-source-select">' + invSourceOptionsHtml + '</select></div>' +
+                '<div class="col-md-2 mb-2"><button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100"><i class="fa fa-trash"></i> Remove</button></div>';
+            container.appendChild(div);
+            toggleInvSourceVisibility();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.remove-line-btn')) {
+                var row = e.target.closest('.line-item');
+                row.remove();
+                reindexLines();
+            }
+        });
+
+        function reindexLines() {
+            document.querySelectorAll('#lineItemsContainer .line-item').forEach(function (row, i) {
+                row.setAttribute('data-index', i);
+                row.querySelectorAll('[name]').forEach(function (el) {
+                    el.name = el.name.replace(/LineItems\[\d+\]/, 'LineItems[' + i + ']');
+                });
+            });
+        }
+
+        // Show/hide inventory source and delivery date based on order type
+        var orderTypeSelect = document.getElementById('orderType');
+        function toggleInvSourceVisibility() {
+            var type = orderTypeSelect.value;
+            var show = type !== 'Booth Sale';
+            document.querySelectorAll('.inv-source-col').forEach(function (col) {
+                col.style.display = show ? '' : 'none';
+            });
+            var ddGroup = document.getElementById('deliveryDateGroup');
+            if (ddGroup) ddGroup.style.display = type === 'Online Delivery' ? '' : 'none';
+        }
+        orderTypeSelect.addEventListener('change', toggleInvSourceVisibility);
+        toggleInvSourceVisibility();
+
+        // ── New Customer modal ──
+        document.getElementById('openNewCustomerModal').addEventListener('click', function () {
+            document.getElementById('custName').value = '';
+            document.getElementById('custEmail').value = '';
+            document.getElementById('custPhone').value = '';
+            document.getElementById('custModalError').classList.add('d-none');
+            var modal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+            modal.show();
+        });
+
+        document.getElementById('custSaveBtn').addEventListener('click', function () {
+            var name = document.getElementById('custName').value.trim();
+            if (!name) {
+                document.getElementById('custModalError').textContent = 'Name is required.';
+                document.getElementById('custModalError').classList.remove('d-none');
+                return;
+            }
+            fetch('@Url.Action("QuickCreate", "Customers")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    email: document.getElementById('custEmail').value.trim() || null,
+                    phone: document.getElementById('custPhone').value.trim() || null
+                })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    // Add new customer to the dropdown and select it
+                    var sel = document.getElementById('customerSelect');
+                    var opt = document.createElement('option');
+                    opt.value = data.id;
+                    opt.text = data.name;
+                    sel.appendChild(opt);
+                    sel.value = data.id;
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
+                } else {
+                    document.getElementById('custModalError').textContent = data.error || 'Failed to create.';
+                    document.getElementById('custModalError').classList.remove('d-none');
+                }
+            });
+        });
+    </script>
+}

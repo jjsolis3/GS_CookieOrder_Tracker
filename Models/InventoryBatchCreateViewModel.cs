@@ -5,11 +5,13 @@ namespace GS_CookieOrder_Tracker.Models;
 
 public class InventoryBatchCreateViewModel
 {
+    [Required]
     [MaxLength(50)]
-    public string? Status { get; set; }
+    public string Status { get; set; } = "Received";
 
+    [Required]
     [MaxLength(50)]
-    public string? BatchType { get; set; }
+    public string BatchType { get; set; } = "Initial Order";
 
     public DateOnly? PickupDate { get; set; }
 
@@ -17,6 +19,18 @@ public class InventoryBatchCreateViewModel
 
     public Guid? GirlScoutId { get; set; }
 
+    /// <summary>Multiple receipt lines per batch.</summary>
+    public List<ReceiptLineViewModel> Lines { get; set; } = new();
+
+    // -- Dropdown options (not bound on POST) --
+    public List<SelectListItem> GirlScouts { get; set; } = new();
+    public List<SelectListItem> Products { get; set; } = new();
+    public List<SelectListItem> Statuses { get; set; } = new();
+    public List<SelectListItem> BatchTypes { get; set; } = new();
+}
+
+public class ReceiptLineViewModel
+{
     [Required]
     public Guid ProductId { get; set; }
 
@@ -25,7 +39,4 @@ public class InventoryBatchCreateViewModel
 
     [Range(0, int.MaxValue)]
     public int QuantityCases { get; set; }
-
-    public List<SelectListItem> GirlScouts { get; set; } = new();
-    public List<SelectListItem> Products { get; set; } = new();
 }

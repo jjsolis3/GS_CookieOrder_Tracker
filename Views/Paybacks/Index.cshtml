@@ -1,34 +1,165 @@
-@model IEnumerable<GS_CookieOrder_Tracker.Data.Payback>
+@model GS_CookieOrder_Tracker.Models.PaybackSummaryViewModel
 
 @{
-    ViewData["Title"] = "Paybacks";
+    ViewData["Title"] = "Payback Report";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Paybacks</h2>
-    <a class="btn btn-primary" asp-action="Create">New Payback</a>
+<!-- Summary cards -->
+<div class="row">
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-danger mb-0">@Model.TotalOwedFromSales.ToString("C")</h4>
+                    <small class="text-muted">Owed from Sales</small>
+                </div>
+                <div class="icon-box rounded-circle" style="background:rgba(255,94,94,.1)">
+                    <i class="fa fa-exclamation-circle text-danger" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    @if (Model.TotalReturnedValue > 0)
+    {
+        <div class="col-xl-3 col-sm-6">
+            <div class="card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="text-warning mb-0">&minus;@Model.TotalReturnedValue.ToString("C")</h4>
+                        <small class="text-muted">Return Credit</small>
+                    </div>
+                    <div class="icon-box rounded-circle" style="background:rgba(248,185,64,.1)">
+                        <i class="fa fa-undo text-warning" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-success mb-0">@Model.TotalPaid.ToString("C")</h4>
+                    <small class="text-muted">Total Paid Back</small>
+                </div>
+                <div class="icon-box bg-success-light rounded-circle">
+                    <i class="fa fa-check-circle text-success" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    @{
+                        var remColor = Model.TotalRemaining > 0 ? "text-warning" : "text-success";
+                    }
+                    <h4 class="@remColor mb-0">@Model.TotalRemaining.ToString("C")</h4>
+                    <small class="text-muted">Remaining Balance</small>
+                </div>
+                <div class="icon-box bg-secondary-light rounded-circle">
+                    <i class="fa fa-balance-scale text-warning" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Paid At</th>
-            <th>Order</th>
-            <th>Customer</th>
-            <th>Amount</th>
-            <th>Method</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var payback in Model)
-        {
-            <tr>
-                <td>@payback.PaidAt.ToString("yyyy-MM-dd")</td>
-                <td>@payback.Order?.OrderedAt.ToString("yyyy-MM-dd")</td>
-                <td>@payback.Customer?.Name</td>
-                <td>@payback.Amount.ToString("C")</td>
-                <td>@payback.Method</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<!-- Owed by product -->
+<div class="row">
+    <div class="col-xl-6 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Owed by Product</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Boxes Sold</th>
+                                <th class="text-end">Price/Box</th>
+                                <th class="text-end">Amount Owed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.ByProduct)
+                            {
+                                <tr>
+                                    <td>@row.ProductName</td>
+                                    <td class="text-end">@row.BoxesSold</td>
+                                    <td class="text-end">@row.PricePerBox.ToString("C")</td>
+                                    <td class="text-end"><strong>@row.AmountOwed.ToString("C")</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3">Subtotal from Sales</td>
+                                <td class="text-end">@Model.TotalOwedFromSales.ToString("C")</td>
+                            </tr>
+                            @if (Model.TotalReturnedValue > 0)
+                            {
+                                <tr class="text-warning">
+                                    <td colspan="3"><i class="fa fa-undo me-1"></i>Return Credit</td>
+                                    <td class="text-end">&minus;@Model.TotalReturnedValue.ToString("C")</td>
+                                </tr>
+                            }
+                            <tr class="fw-bold">
+                                <td colspan="3">Net Owed</td>
+                                <td class="text-end">@Model.TotalOwed.ToString("C")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p class="text-muted small mt-2 mb-0">Online Delivery orders are excluded. Returned product reduces the amount owed.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent payments -->
+    <div class="col-xl-6 col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Recent Payments</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> Record Payment
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Order</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pay in Model.RecentPayments)
+                            {
+                                var methodClass = pay.Method?.ToLower() switch
+                                {
+                                    "cash" => "badge-success",
+                                    "card" => "badge-info",
+                                    "check" => "badge-warning",
+                                    _ => "badge-primary"
+                                };
+                                <tr>
+                                    <td>@pay.PaidAt.ToString("yyyy-MM-dd")</td>
+                                    <td><strong>@pay.Amount.ToString("C")</strong></td>
+                                    <td><span class="badge light @methodClass">@pay.Method</span></td>
+                                    <td><small>@pay.OrderInfo</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
