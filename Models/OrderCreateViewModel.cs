@@ -35,6 +35,9 @@ public class OrderCreateViewModel
     public List<SelectListItem> OrderTypes { get; set; } = new();
     public List<SelectListItem> PaymentMethods { get; set; } = new();
     public List<SelectListItem> InventorySources { get; set; } = new();
+
+    /// <summary>Product ID → PricePerBox, used by JS to auto-fill unit price.</summary>
+    public Dictionary<string, decimal> ProductPrices { get; set; } = new();
 }
 
 public class OrderLineItemViewModel

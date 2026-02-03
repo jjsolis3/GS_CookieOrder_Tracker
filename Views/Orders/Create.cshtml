@@ -65,11 +65,19 @@
                             <div class="row line-item align-items-end mb-2" data-index="@i">
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label">Product</label>
-                                    <select name="LineItems[@i].ProductId" class="form-select">
+                                    <select name="LineItems[@i].ProductId" class="form-select product-select">
                                         <option value="">-- select --</option>
                                         @foreach (var p in Model.Products)
                                         {
-                                            <option value="@p.Value" selected="@(p.Value == Model.LineItems[i].ProductId.ToString())">@p.Text</option>
+                                            var price = Model.ProductPrices.GetValueOrDefault(p.Value, 0);
+                                            if (p.Value == Model.LineItems[i].ProductId.ToString())
+                                            {
+                                                <option value="@p.Value" data-price="@price" selected="selected">@p.Text</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@p.Value" data-price="@price">@p.Text</option>
+                                            }
                                         }
                                     </select>
                                 </div>
@@ -79,7 +87,7 @@
                                 </div>
                                 <div class="col-md-2 mb-2">
                                     <label class="form-label">Unit Price</label>
-                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control" />
+                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control" readonly />
                                 </div>
                                 <div class="col-md-2 mb-2 inv-source-col">
                                     <label class="form-label">Inv. Source</label>
@@ -113,8 +121,24 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         // Cache product options HTML from the first row for reuse
-        var productOptionsHtml = document.querySelector('.line-item select[name$=".ProductId"]').innerHTML;
+        var productOptionsHtml = document.querySelector('.line-item .product-select').innerHTML;
         var invSourceOptionsHtml = document.querySelector('.inv-source-select') ? document.querySelector('.inv-source-select').innerHTML : '<option value="Personal">Personal</option><option value="Troop">Troop</option>';
+
+        // Auto-fill unit price when a product is selected
+        function onProductChange(selectEl) {
+            var opt = selectEl.options[selectEl.selectedIndex];
+            var price = opt && opt.dataset.price ? opt.dataset.price : '0';
+            var row = selectEl.closest('.line-item');
+            var priceInput = row.querySelector('input[name$=".UnitPrice"]');
+            if (priceInput) priceInput.value = price;
+        }
+
+        // Listen for product changes on all current and future rows (event delegation)
+        document.getElementById('lineItemsContainer').addEventListener('change', function (e) {
+            if (e.target.classList.contains('product-select')) {
+                onProductChange(e.target);
+            }
+        });
 
         document.getElementById('addLineBtn').addEventListener('click', function () {
             var container = document.getElementById('lineItemsContainer');
@@ -124,11 +148,11 @@
             div.setAttribute('data-index', idx);
             div.innerHTML =
                 '<div class="col-md-4 mb-2"><label class="form-label">Product</label>' +
-                '<select name="LineItems[' + idx + '].ProductId" class="form-select">' + productOptionsHtml + '</select></div>' +
+                '<select name="LineItems[' + idx + '].ProductId" class="form-select product-select">' + productOptionsHtml + '</select></div>' +
                 '<div class="col-md-2 mb-2"><label class="form-label">Boxes</label>' +
                 '<input name="LineItems[' + idx + '].QuantityBoxes" type="number" min="1" value="1" class="form-control" /></div>' +
                 '<div class="col-md-2 mb-2"><label class="form-label">Unit Price</label>' +
-                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control" /></div>' +
+                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control" readonly /></div>' +
                 '<div class="col-md-2 mb-2 inv-source-col"><label class="form-label">Inv. Source</label>' +
                 '<select name="LineItems[' + idx + '].InventorySource" class="form-select inv-source-select">' + invSourceOptionsHtml + '</select></div>' +
                 '<div class="col-md-2 mb-2"><button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100"><i class="fa fa-trash"></i> Remove</button></div>';
@@ -157,11 +181,10 @@
         var orderTypeSelect = document.getElementById('orderType');
         function toggleInvSourceVisibility() {
             var type = orderTypeSelect.value;
-            var show = type !== 'Booth Sale'; // Booth defaults to Troop; hide selector
+            var show = type !== 'Booth Sale';
             document.querySelectorAll('.inv-source-col').forEach(function (col) {
                 col.style.display = show ? '' : 'none';
             });
-            // Show delivery date only for Online Delivery
             var ddGroup = document.getElementById('deliveryDateGroup');
             if (ddGroup) ddGroup.style.display = type === 'Online Delivery' ? '' : 'none';
         }

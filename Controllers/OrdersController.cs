@@ -113,7 +113,18 @@ public class OrdersController : Controller
     {
         model.Customers = await BuildCustomerOptionsAsync();
         model.GirlScouts = await BuildGirlScoutOptionsAsync();
-        model.Products = await BuildProductOptionsAsync();
+
+        var products = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.Name)
+            .Select(p => new { p.Id, p.Name, p.PricePerBox })
+            .ToListAsync();
+
+        model.Products = products
+            .Select(p => new SelectListItem($"{p.Name} (${p.PricePerBox})", p.Id.ToString()))
+            .ToList();
+
+        model.ProductPrices = products.ToDictionary(p => p.Id.ToString(), p => p.PricePerBox);
         model.OrderTypes = new List<SelectListItem>
         {
             new("Direct Sale", "Direct Sale"),
@@ -166,12 +177,4 @@ public class OrdersController : Controller
         return scouts;
     }
 
-    private async Task<List<SelectListItem>> BuildProductOptionsAsync()
-    {
-        return await _dbContext.Products
-            .Where(p => p.Active)
-            .OrderBy(p => p.Name)
-            .Select(p => new SelectListItem($"{p.Name} (${p.PricePerBox})", p.Id.ToString()))
-            .ToListAsync();
-    }
 }
