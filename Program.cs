@@ -28,6 +28,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient<SupabaseAuthService>();
+builder.Services.AddHttpClient<SupabaseAdminService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("db");

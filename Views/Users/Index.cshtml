@@ -1,0 +1,131 @@
+@model List<GS_CookieOrder_Tracker.Services.SupabaseUserInfo>
+
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Users</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Invite">
+                    <i class="fa fa-plus me-1"></i> Invite User
+                </a>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-warning">@ViewBag.Error</div>
+                }
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success">@TempData["Success"]</div>
+                }
+
+                <div class="table-responsive">
+                    <table class="table table-responsive-md table-hover">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                                <th>Last Sign In</th>
+                                <th style="width:250px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model)
+                            {
+                                var roleClass = user.Role == "admin" ? "badge-primary" : "badge-secondary";
+                                <tr data-user-id="@user.Id" data-user-email="@user.Email">
+                                    <td>@user.Email</td>
+                                    <td>
+                                        <select class="form-select form-select-sm role-select" data-user-id="@user.Id" style="width:120px">
+                                            @{
+                                                var roles = new[] { "user", "admin", "viewer" };
+                                            }
+                                            @foreach (var r in roles)
+                                            {
+                                                if (r == user.Role)
+                                                {
+                                                    <option value="@r" selected="selected">@r</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@r">@r</option>
+                                                }
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                    <td>@(user.LastSignIn?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-warning reset-btn" data-email="@user.Email">
+                                            <i class="fa fa-key"></i> Reset Password
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-btn" data-user-id="@user.Id" data-email="@user.Email">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ── Update role ──
+        document.querySelectorAll('.role-select').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var userId = this.dataset.userId;
+                var role = this.value;
+                fetch('@Url.Action("UpdateRole", "Users")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId, role: role })
+                }).then(function (r) {
+                    if (!r.ok) alert('Failed to update role.');
+                });
+            });
+        });
+
+        // ── Send password reset ──
+        document.querySelectorAll('.reset-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var email = this.dataset.email;
+                if (!confirm('Send password reset email to ' + email + '?')) return;
+                fetch('@Url.Action("SendReset", "Users")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                }).then(function (r) {
+                    if (r.ok) alert('Reset email sent to ' + email);
+                    else alert('Failed to send reset email.');
+                });
+            });
+        });
+
+        // ── Delete user ──
+        document.querySelectorAll('.delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var userId = this.dataset.userId;
+                var email = this.dataset.email;
+                if (!confirm('Delete user ' + email + '? This cannot be undone.')) return;
+                fetch('@Url.Action("Delete", "Users")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else alert('Failed to delete user.');
+                });
+            });
+        });
+    </script>
+}

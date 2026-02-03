@@ -102,6 +102,26 @@
                     <li><a href="@Url.Action("Create", "Paybacks")">Record Payment</a></li>
                 </ul>
             </li>
+            <li class="menu-title">ADMIN</li>
+            <li>
+                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
+                    <div class="menu-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g opacity="0.5">
+                                <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" fill="none"/>
+                                <path d="M23 21V19C22.9986 18.1137 22.7005 17.2528 22.1523 16.5523C21.6041 15.8519 20.8371 15.3516 19.98 15.13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <path d="M16 3.13C16.8604 3.35031 17.6308 3.85071 18.1813 4.55232C18.7318 5.25392 19.0301 6.11683 19.0301 7.005C19.0301 7.89318 18.7318 8.75608 18.1813 9.45769C17.6308 10.1593 16.8604 10.6597 16 10.88" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Users</span>
+                </a>
+                <ul aria-expanded="false">
+                    <li><a href="@Url.Action("Index", "Users")">All Users</a></li>
+                    <li><a href="@Url.Action("Invite", "Users")">Invite User</a></li>
+                </ul>
+            </li>
             <li class="menu-title">ACCOUNT</li>
             <li>
                 @if (User.Identity?.IsAuthenticated ?? false)

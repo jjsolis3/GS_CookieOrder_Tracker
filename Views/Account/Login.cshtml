@@ -35,11 +35,14 @@
                                         <span asp-validation-for="Password" class="text-danger"></span>
                                     </div>
                                     <div class="row d-flex justify-content-between mt-4 mb-2">
-                                        <div class="mb-3">
+                                        <div class="col-6">
                                             <div class="form-check custom-checkbox ms-1">
                                                 <input asp-for="RememberMe" class="form-check-input" id="basic_checkbox_1" />
                                                 <label class="form-check-label" for="basic_checkbox_1">Remember me</label>
                                             </div>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <a asp-action="ForgotPassword" class="text-primary small">Forgot Password?</a>
                                         </div>
                                     </div>
                                     <div class="text-center">
