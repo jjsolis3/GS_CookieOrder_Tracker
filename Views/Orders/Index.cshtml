@@ -27,6 +27,7 @@
                                 <th>Total Qty</th>
                                 <th>Total Price</th>
                                 <th>Paid</th>
+                                <th style="width:100px"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -39,16 +40,7 @@
                                     "Booth Sale" => "badge-success",
                                     _ => "badge-secondary"
                                 };
-                                var statusClass = order.Status?.ToLower() switch
-                                {
-                                    "pending" => "badge-warning",
-                                    "paid" => "badge-success",
-                                    "delivered" => "badge-success",
-                                    "cancelled" => "badge-danger",
-                                    "confirmed" => "badge-info",
-                                    _ => "badge-primary"
-                                };
-                                <tr>
+                                <tr data-order-id="@order.Id">
                                     <td>@order.OrderedAt.ToString("yyyy-MM-dd")</td>
                                     <td><span class="badge light @typeClass">@order.OrderType</span></td>
                                     <td>@order.Customer?.Name</td>
@@ -59,10 +51,32 @@
                                             <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
                                         }
                                     </td>
-                                    <td><span class="badge light @statusClass">@order.Status</span></td>
+                                    <td>
+                                        <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:130px">
+                                            @{
+                                                var statuses = new[] { "Pending", "Confirmed", "Paid", "Delivered", "Completed", "Cancelled" };
+                                            }
+                                            @foreach (var s in statuses)
+                                            {
+                                                if (s == order.Status)
+                                                {
+                                                    <option value="@s" selected="selected">@s</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@s">@s</option>
+                                                }
+                                            }
+                                        </select>
+                                    </td>
                                     <td>@order.TotalQty</td>
                                     <td>@order.TotalPrice?.ToString("C")</td>
                                     <td>@order.PaidAmount?.ToString("C")</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary detail-btn" data-order-id="@order.Id">
+                                            <i class="fa fa-eye"></i> Details
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -72,3 +86,296 @@
         </div>
     </div>
 </div>
+
+<!-- ═══════════ ORDER DETAIL / EDIT MODAL ═══════════ -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Alert for completed orders -->
+                <div id="mdlCompletedAlert" class="alert alert-warning d-none">
+                    <i class="fa fa-lock me-1"></i> This order is <strong>Completed</strong>. Change status to edit.
+                </div>
+
+                <!-- Order header info -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Customer</label>
+                        <p id="mdlCustomer" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Girl Scout</label>
+                        <p id="mdlGirlScout" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Order Date</label>
+                        <p id="mdlOrderDate" class="mb-0"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Order Type</label>
+                        <p id="mdlOrderType" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Status</label>
+                        <select id="mdlStatus" class="form-select form-select-sm" style="width:160px">
+                            <option value="Pending">Pending</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Payment Method</label>
+                        <select id="mdlPaymentMethod" class="form-select form-select-sm" style="width:160px">
+                            <option value="Cash">Cash</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Venmo">Venmo</option>
+                            <option value="Zelle">Zelle</option>
+                            <option value="Check">Check</option>
+                            <option value="Online Payment">Online Payment</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Notes</label>
+                        <input id="mdlNotes" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <label class="form-label fw-bold">Total</label>
+                        <p id="mdlTotalPrice" class="mb-0 fs-5 fw-bold text-primary"></p>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <label class="form-label fw-bold">Paid</label>
+                        <p id="mdlPaidAmount" class="mb-0 fs-5"></p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Line items table -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Line Items</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="mdlAddLineBtn">
+                        <i class="fa fa-plus me-1"></i> Add Product
+                    </button>
+                </div>
+                <table class="table table-sm" id="mdlLineItemsTable">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Source</th>
+                            <th>Line Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mdlLineItemsBody"></tbody>
+                </table>
+
+                <!-- Add product row (hidden until "Add Product" clicked) -->
+                <div id="mdlAddLineRow" class="row align-items-end mb-2 d-none">
+                    <div class="col-md-4">
+                        <label class="form-label">Product</label>
+                        <select id="mdlNewProductId" class="form-select form-select-sm"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Qty</label>
+                        <input id="mdlNewQty" type="number" min="1" value="1" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Source</label>
+                        <select id="mdlNewSource" class="form-select form-select-sm">
+                            <option value="Personal">Personal</option>
+                            <option value="Troop">Troop</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-success" id="mdlConfirmAddLine">
+                            <i class="fa fa-check"></i> Add
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="mdlCancelAddLine">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="mdlSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var currentOrderId = null;
+        var currentOrderData = null;
+
+        // ── Quick status change from table ──
+        document.querySelectorAll('.status-select').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var orderId = this.dataset.orderId;
+                var newStatus = this.value;
+                fetch('@Url.Action("UpdateStatus", "Orders")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId: orderId, status: newStatus })
+                }).then(function (r) {
+                    if (!r.ok) { alert('Failed to update status.'); location.reload(); }
+                });
+            });
+        });
+
+        // ── Open detail modal ──
+        document.querySelectorAll('.detail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                currentOrderId = this.dataset.orderId;
+                loadOrderDetail(currentOrderId);
+            });
+        });
+
+        function loadOrderDetail(orderId) {
+            fetch('@Url.Action("GetDetail", "Orders")?id=' + orderId)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    currentOrderData = data;
+                    populateModal(data);
+                    var modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+                    modal.show();
+                });
+        }
+
+        function populateModal(d) {
+            var isCompleted = d.status === 'Completed';
+
+            document.getElementById('mdlCustomer').textContent = d.customerName || '—';
+            document.getElementById('mdlGirlScout').textContent = d.girlScoutName || 'Unassigned';
+            document.getElementById('mdlOrderDate').textContent = d.orderedAt;
+            document.getElementById('mdlOrderType').textContent = d.orderType;
+            document.getElementById('mdlTotalPrice').textContent = '$' + (d.totalPrice || 0).toFixed(2);
+            document.getElementById('mdlPaidAmount').textContent = '$' + (d.paidAmount || 0).toFixed(2);
+
+            // Editable fields
+            document.getElementById('mdlStatus').value = d.status || 'Pending';
+            document.getElementById('mdlPaymentMethod').value = d.paymentMethod || 'Cash';
+            document.getElementById('mdlNotes').value = d.notes || '';
+
+            // Lock editable fields if completed
+            var alert = document.getElementById('mdlCompletedAlert');
+            alert.classList.toggle('d-none', !isCompleted);
+            document.getElementById('mdlPaymentMethod').disabled = isCompleted;
+            document.getElementById('mdlNotes').disabled = isCompleted;
+            document.getElementById('mdlAddLineBtn').disabled = isCompleted;
+            document.getElementById('mdlSaveBtn').disabled = isCompleted;
+
+            // Line items
+            var tbody = document.getElementById('mdlLineItemsBody');
+            tbody.innerHTML = '';
+            d.lineItems.forEach(function (li) {
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td>' + (li.productName || '—') + '</td>' +
+                    '<td>' + li.quantityBoxes + '</td>' +
+                    '<td>$' + li.unitPrice.toFixed(2) + '</td>' +
+                    '<td>' + (li.inventorySource || '') + '</td>' +
+                    '<td>$' + li.lineTotal.toFixed(2) + '</td>' +
+                    '<td>' + (isCompleted ? '' : '<button class="btn btn-sm btn-outline-danger mdl-remove-line" data-line-id="' + li.id + '"><i class="fa fa-trash"></i></button>') + '</td>';
+                tbody.appendChild(tr);
+            });
+
+            // Product dropdown for adding
+            var prodSel = document.getElementById('mdlNewProductId');
+            prodSel.innerHTML = '<option value="">-- select --</option>';
+            d.products.forEach(function (p) {
+                prodSel.innerHTML += '<option value="' + p.id + '">' + p.name + ' ($' + p.price.toFixed(2) + ')</option>';
+            });
+
+            // Hide the add row
+            document.getElementById('mdlAddLineRow').classList.add('d-none');
+        }
+
+        // ── Save order changes ──
+        document.getElementById('mdlSaveBtn').addEventListener('click', function () {
+            fetch('@Url.Action("UpdateOrder", "Orders")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    orderId: currentOrderId,
+                    status: document.getElementById('mdlStatus').value,
+                    paymentMethod: document.getElementById('mdlPaymentMethod').value,
+                    notes: document.getElementById('mdlNotes').value
+                })
+            }).then(function (r) {
+                if (r.ok) location.reload();
+                else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+            });
+        });
+
+        // ── Remove line item ──
+        document.getElementById('mdlLineItemsBody').addEventListener('click', function (e) {
+            var btn = e.target.closest('.mdl-remove-line');
+            if (!btn) return;
+            if (!confirm('Remove this line item?')) return;
+            fetch('@Url.Action("RemoveLineItem", "Orders")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lineItemId: btn.dataset.lineId })
+            }).then(function (r) {
+                if (r.ok) loadOrderDetail(currentOrderId);
+                else alert('Failed to remove.');
+            });
+        });
+
+        // ── Show add-line row ──
+        document.getElementById('mdlAddLineBtn').addEventListener('click', function () {
+            document.getElementById('mdlAddLineRow').classList.remove('d-none');
+            document.getElementById('mdlNewQty').value = 1;
+        });
+        document.getElementById('mdlCancelAddLine').addEventListener('click', function () {
+            document.getElementById('mdlAddLineRow').classList.add('d-none');
+        });
+
+        // ── Confirm add line item ──
+        document.getElementById('mdlConfirmAddLine').addEventListener('click', function () {
+            var productId = document.getElementById('mdlNewProductId').value;
+            var qty = parseInt(document.getElementById('mdlNewQty').value) || 1;
+            var source = document.getElementById('mdlNewSource').value;
+            if (!productId) { alert('Select a product.'); return; }
+
+            fetch('@Url.Action("AddLineItem", "Orders")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: currentOrderId, productId: productId, quantityBoxes: qty, inventorySource: source })
+            }).then(function (r) {
+                if (r.ok) {
+                    document.getElementById('mdlAddLineRow').classList.add('d-none');
+                    loadOrderDetail(currentOrderId);
+                }
+                else r.json().then(function (d) { alert(d.error || 'Failed to add.'); });
+            });
+        });
+
+        // ── When status changes in modal, toggle lock ──
+        document.getElementById('mdlStatus').addEventListener('change', function () {
+            var isCompleted = this.value === 'Completed';
+            document.getElementById('mdlCompletedAlert').classList.toggle('d-none', !isCompleted);
+            document.getElementById('mdlPaymentMethod').disabled = isCompleted;
+            document.getElementById('mdlNotes').disabled = isCompleted;
+            document.getElementById('mdlAddLineBtn').disabled = isCompleted;
+        });
+    </script>
+}

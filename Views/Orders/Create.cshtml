@@ -23,8 +23,11 @@
                             <span asp-validation-for="OrderType" class="text-danger"></span>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label asp-for="CustomerId" class="form-label">Customer</label>
-                            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"></select>
+                            <label asp-for="CustomerId" class="form-label">
+                                Customer
+                                <a href="javascript:void(0)" id="openNewCustomerModal" class="ms-2 small"><i class="fa fa-plus"></i> New Customer</a>
+                            </label>
+                            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select" id="customerSelect"></select>
                             <span asp-validation-for="CustomerId" class="text-danger"></span>
                         </div>
                         <div class="col-md-4 mb-3">
@@ -117,6 +120,39 @@
     </div>
 </div>
 
+<!-- ═══════════ NEW CUSTOMER MODAL ═══════════ -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="custModalError" class="text-danger mb-2 d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                    <input id="custName" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input id="custEmail" type="email" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input id="custPhone" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="custSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save Customer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -190,5 +226,50 @@
         }
         orderTypeSelect.addEventListener('change', toggleInvSourceVisibility);
         toggleInvSourceVisibility();
+
+        // ── New Customer modal ──
+        document.getElementById('openNewCustomerModal').addEventListener('click', function () {
+            document.getElementById('custName').value = '';
+            document.getElementById('custEmail').value = '';
+            document.getElementById('custPhone').value = '';
+            document.getElementById('custModalError').classList.add('d-none');
+            var modal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+            modal.show();
+        });
+
+        document.getElementById('custSaveBtn').addEventListener('click', function () {
+            var name = document.getElementById('custName').value.trim();
+            if (!name) {
+                document.getElementById('custModalError').textContent = 'Name is required.';
+                document.getElementById('custModalError').classList.remove('d-none');
+                return;
+            }
+            fetch('@Url.Action("QuickCreate", "Customers")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    email: document.getElementById('custEmail').value.trim() || null,
+                    phone: document.getElementById('custPhone').value.trim() || null
+                })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    // Add new customer to the dropdown and select it
+                    var sel = document.getElementById('customerSelect');
+                    var opt = document.createElement('option');
+                    opt.value = data.id;
+                    opt.text = data.name;
+                    sel.appendChild(opt);
+                    sel.value = data.id;
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
+                } else {
+                    document.getElementById('custModalError').textContent = data.error || 'Failed to create.';
+                    document.getElementById('custModalError').classList.remove('d-none');
+                }
+            });
+        });
     </script>
 }
