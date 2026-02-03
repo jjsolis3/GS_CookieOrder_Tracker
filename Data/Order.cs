@@ -28,7 +28,7 @@ public class Order
     public string? Notes { get; set; }
 
     [Column("customer_id")]
-    public Guid CustomerId { get; set; }
+    public Guid? CustomerId { get; set; }
 
     [Column("girl_scout_id")]
     public Guid? GirlScoutId { get; set; }

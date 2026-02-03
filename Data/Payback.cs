@@ -11,7 +11,7 @@ public class Payback
     public Guid Id { get; set; }
 
     [Column("order_id")]
-    public Guid OrderId { get; set; }
+    public Guid? OrderId { get; set; }
 
     [Column("customer_id")]
     public Guid? CustomerId { get; set; }

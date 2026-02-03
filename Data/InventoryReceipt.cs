@@ -11,7 +11,7 @@ public class InventoryReceipt
     public Guid Id { get; set; }
 
     [Column("inventory_batch_id")]
-    public Guid InventoryBatchId { get; set; }
+    public Guid? InventoryBatchId { get; set; }
 
     [Column("received_at")]
     public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
