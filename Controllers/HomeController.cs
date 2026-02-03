@@ -31,6 +31,10 @@ public class HomeController : Controller
         var soldAll = await _dbContext.OrderLineItems
             .SumAsync(li => (int?)li.QuantityBoxes) ?? 0;
 
+        var returnedBoxes = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .SumAsync(r => (int?)(r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase)) ?? 0;
+
         var activeProducts = await _dbContext.Products.CountAsync(p => p.Active);
 
         // Orders
@@ -38,11 +42,18 @@ public class HomeController : Controller
         var pendingOrders = await _dbContext.Orders.CountAsync(o => o.Status == "Pending");
         var totalRevenue = await _dbContext.Orders.SumAsync(o => (decimal?)o.TotalPrice) ?? 0;
 
-        // Paybacks
-        var totalOwed = await _dbContext.OrderLineItems
+        // Paybacks (owed from non-online orders, minus value of returned product)
+        var owedFromSales = await _dbContext.OrderLineItems
             .Include(li => li.Order)
             .Where(li => li.Order!.OrderType != "Online Delivery")
             .SumAsync(li => (decimal?)(li.QuantityBoxes * li.UnitPrice)) ?? 0;
+
+        var returnedValue = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .SumAsync(r => (decimal?)((r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase) * r.Product.PricePerBox)) ?? 0;
+
+        var totalOwed = owedFromSales - returnedValue;
+        if (totalOwed < 0) totalOwed = 0;
 
         var totalPaid = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0;
 
@@ -78,7 +89,7 @@ public class HomeController : Controller
 
         var vm = new DashboardViewModel
         {
-            TotalBoxesOnHand = received - soldPersonal,
+            TotalBoxesOnHand = received - soldPersonal - returnedBoxes,
             TotalBoxesReceived = received,
             TotalBoxesSold = soldAll,
             ActiveProducts = activeProducts,

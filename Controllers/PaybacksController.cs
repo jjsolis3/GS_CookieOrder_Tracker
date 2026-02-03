@@ -35,7 +35,15 @@ public class PaybacksController : Controller
             .OrderBy(r => r.ProductName)
             .ToListAsync();
 
-        var totalOwed = owedByProduct.Sum(r => r.AmountOwed);
+        var owedFromSales = owedByProduct.Sum(r => r.AmountOwed);
+
+        // Subtract the value of returned product (returns remove payback responsibility)
+        var returnedValue = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .SumAsync(r => (decimal?)((r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase) * r.Product.PricePerBox)) ?? 0m;
+
+        var totalOwed = owedFromSales - returnedValue;
+        if (totalOwed < 0) totalOwed = 0;
 
         var totalPaid = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
@@ -58,6 +66,8 @@ public class PaybacksController : Controller
         var vm = new PaybackSummaryViewModel
         {
             ByProduct = owedByProduct,
+            TotalOwedFromSales = owedFromSales,
+            TotalReturnedValue = returnedValue,
             TotalOwed = totalOwed,
             TotalPaid = totalPaid,
             RecentPayments = recentPayments

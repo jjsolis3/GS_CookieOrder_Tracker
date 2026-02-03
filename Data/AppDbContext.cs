@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<InventoryBatch> InventoryBatches => Set<InventoryBatch>();
     public DbSet<InventoryReceipt> InventoryReceipts => Set<InventoryReceipt>();
+    public DbSet<InventoryReturn> InventoryReturns => Set<InventoryReturn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,5 +64,10 @@ public class AppDbContext : DbContext
             .HasOne(batch => batch.GirlScout)
             .WithMany(scout => scout.InventoryBatches)
             .HasForeignKey(batch => batch.GirlScoutId);
+
+        modelBuilder.Entity<InventoryReturn>()
+            .HasOne(ret => ret.Product)
+            .WithMany(product => product.InventoryReturns)
+            .HasForeignKey(ret => ret.ProductId);
     }
 }

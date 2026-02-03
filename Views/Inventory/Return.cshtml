@@ -1,0 +1,67 @@
+@model GS_CookieOrder_Tracker.Models.InventoryReturnCreateViewModel
+
+@{
+    ViewData["Title"] = "Return Product";
+}
+
+<div class="row">
+    <div class="col-xl-8 col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Return Product to Troop</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Use this form to return unsold boxes or cases back to the troop. Returned product will be removed from your personal inventory and payback responsibility.</p>
+                <form asp-action="Return" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ProductId" class="form-label">Product</label>
+                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select default-select">
+                                <option value="">-- Select Product --</option>
+                            </select>
+                            <span asp-validation-for="ProductId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="QuantityBoxes" class="form-label">Boxes</label>
+                            <input asp-for="QuantityBoxes" class="form-control" min="0" />
+                            <span asp-validation-for="QuantityBoxes" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="QuantityCases" class="form-label">Cases</label>
+                            <input asp-for="QuantityCases" class="form-control" min="0" />
+                            <span asp-validation-for="QuantityCases" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Reason" class="form-label">Reason</label>
+                            <select asp-for="Reason" class="form-select default-select">
+                                <option value="">-- Select Reason --</option>
+                                <option value="Unsold">Unsold - Returning unsold product</option>
+                                <option value="Damaged">Damaged - Product was damaged</option>
+                                <option value="Excess">Excess - Over-ordered</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Notes" class="form-label">Notes</label>
+                            <input asp-for="Notes" class="form-control" placeholder="Optional notes..." />
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fa fa-undo me-1"></i> Submit Return
+                        </button>
+                        <a class="btn btn-outline-light ms-2" asp-action="Stock">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

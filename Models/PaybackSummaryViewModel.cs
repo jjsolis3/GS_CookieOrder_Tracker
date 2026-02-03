@@ -3,6 +3,8 @@ namespace GS_CookieOrder_Tracker.Models;
 public class PaybackSummaryViewModel
 {
     public List<PaybackProductRow> ByProduct { get; set; } = new();
+    public decimal TotalOwedFromSales { get; set; }
+    public decimal TotalReturnedValue { get; set; }
     public decimal TotalOwed { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalRemaining => TotalOwed - TotalPaid;

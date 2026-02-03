@@ -50,4 +50,5 @@ public class Product
 
     public List<OrderLineItem> OrderLineItems { get; set; } = new();
     public List<InventoryReceipt> InventoryReceipts { get; set; } = new();
+    public List<InventoryReturn> InventoryReturns { get; set; } = new();
 }

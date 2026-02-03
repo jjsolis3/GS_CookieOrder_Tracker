@@ -78,13 +78,54 @@ public class InventoryController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    /// <summary>Current stock = boxes received via inventory receipts minus boxes sold from personal inventory.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Return()
+    {
+        var vm = new InventoryReturnCreateViewModel
+        {
+            Products = await BuildProductOptionsAsync()
+        };
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Return(InventoryReturnCreateViewModel model)
+    {
+        if (model.QuantityBoxes == 0 && model.QuantityCases == 0)
+        {
+            ModelState.AddModelError("", "You must return at least one box or case.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            model.Products = await BuildProductOptionsAsync();
+            return View(model);
+        }
+
+        var ret = new InventoryReturn
+        {
+            Id = Guid.NewGuid(),
+            ProductId = model.ProductId,
+            QuantityBoxes = model.QuantityBoxes,
+            QuantityCases = model.QuantityCases,
+            Reason = model.Reason,
+            Notes = model.Notes
+        };
+
+        _dbContext.InventoryReturns.Add(ret);
+        await _dbContext.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Stock));
+    }
+
+    /// <summary>Current stock = boxes received minus boxes sold (personal) minus boxes returned.</summary>
     public async Task<IActionResult> Stock()
     {
         var received = await _dbContext.InventoryReceipts
             .Include(r => r.Product)
-            .GroupBy(r => new { r.ProductId, r.Product!.Name })
-            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * (r.Product!.BoxesPerCase)) })
+            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
             .ToListAsync();
 
         var soldPersonal = await _dbContext.OrderLineItems
@@ -99,17 +140,25 @@ public class InventoryController : Controller
             .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
             .ToListAsync();
 
+        var returned = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .GroupBy(r => new { r.ProductId, r.Product!.BoxesPerCase })
+            .Select(g => new { ProductId = g.Key.ProductId, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
+            .ToListAsync();
+
         var products = received.Select(r =>
         {
             var sp = soldPersonal.FirstOrDefault(s => s.ProductId == r.ProductId);
             var st = soldTroop.FirstOrDefault(s => s.ProductId == r.ProductId);
+            var rt = returned.FirstOrDefault(s => s.ProductId == r.ProductId);
             return new ProductStockRow
             {
                 ProductId = r.ProductId,
                 ProductName = r.Name,
                 BoxesReceived = r.Boxes,
                 BoxesSoldPersonal = sp?.Boxes ?? 0,
-                BoxesSoldTroop = st?.Boxes ?? 0
+                BoxesSoldTroop = st?.Boxes ?? 0,
+                BoxesReturned = rt?.Boxes ?? 0
             };
         }).OrderBy(p => p.ProductName).ToList();
 
@@ -118,6 +167,7 @@ public class InventoryController : Controller
             Products = products,
             TotalBoxesReceived = products.Sum(p => p.BoxesReceived),
             TotalBoxesSold = products.Sum(p => p.BoxesSoldPersonal + p.BoxesSoldTroop),
+            TotalBoxesReturned = products.Sum(p => p.BoxesReturned),
             TotalBoxesOnHand = products.Sum(p => p.BoxesOnHand)
         };
 
