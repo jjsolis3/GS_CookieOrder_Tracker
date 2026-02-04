@@ -15,7 +15,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-responsive-md">
+                    <table class="table table-responsive-md table-hover">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -24,6 +24,7 @@
                                 <th>Boxes/Case</th>
                                 <th>Category</th>
                                 <th>Status</th>
+                                <th style="width:80px"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -45,6 +46,11 @@
                                             <span class="badge light badge-secondary">Inactive</span>
                                         }
                                     </td>
+                                    <td>
+                                        <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-product-id="@product.Id" title="View Details">
+                                            <i class="fa fa-eye"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -54,3 +60,274 @@
         </div>
     </div>
 </div>
+
+<!-- ═══════════ PRODUCT DETAIL MODAL ═══════════ -->
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalTitle">Product Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <img id="detailImage" src="" alt="Product" class="img-fluid rounded" style="max-height:200px;object-fit:contain;display:none" />
+                        <div id="detailNoImage" class="text-muted py-5">
+                            <i class="fa fa-image" style="font-size:3rem;opacity:.3"></i>
+                            <p class="mt-2 mb-0">No image</p>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <h4 id="detailName" class="mb-1"></h4>
+                        <p id="detailDescription" class="text-muted mb-3"></p>
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">SKU</small>
+                                <strong id="detailSku"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Category</small>
+                                <strong id="detailCategory"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Price per Box</small>
+                                <strong id="detailPrice" class="text-primary"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Boxes per Case</small>
+                                <strong id="detailBoxesPerCase"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Cost</small>
+                                <strong id="detailCost"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Reward</small>
+                                <strong id="detailReward"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Vendor</small>
+                                <strong id="detailVendor"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Barcode</small>
+                                <strong id="detailBarcode"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Status</small>
+                                <span id="detailStatus"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="detailDeleteBtn">
+                    <i class="fa fa-trash me-1"></i> Delete
+                </button>
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="detailEditBtn">
+                    <i class="fa fa-edit me-1"></i> Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ PRODUCT EDIT MODAL ═══════════ -->
+<div class="modal fade" id="productEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId" />
+                <h6 class="mb-3">Basic Info</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Name</label>
+                        <input id="editName" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">SKU</label>
+                        <input id="editSku" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Category</label>
+                        <input id="editCategory" class="form-control" />
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="editDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <h6 class="mb-3">Pricing &amp; Packaging</h6>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Price per Box</label>
+                        <input id="editPrice" type="number" step="0.01" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Boxes per Case</label>
+                        <input id="editBoxesPerCase" type="number" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Cost</label>
+                        <input id="editCost" type="number" step="0.01" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Reward</label>
+                        <input id="editReward" type="number" step="0.01" class="form-control" />
+                    </div>
+                </div>
+                <h6 class="mb-3">Additional Details</h6>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Vendor</label>
+                        <input id="editVendor" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Barcode</label>
+                        <input id="editBarcode" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Image Path / URL</label>
+                        <input id="editImagePath" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="form-check mt-4">
+                            <input id="editActive" class="form-check-input" type="checkbox" />
+                            <label class="form-check-label">Active</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="editSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        var currentProductId = null;
+        var detailModalInstance = null;
+        var editModalInstance = null;
+
+        // ── Open detail modal ──
+        document.querySelectorAll('.detail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                currentProductId = this.dataset.productId;
+                loadProductDetail(currentProductId);
+            });
+        });
+
+        function loadProductDetail(id) {
+            fetch('@Url.Action("GetDetail", "Products")?id=' + id)
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    document.getElementById('detailName').textContent = d.name;
+                    document.getElementById('detailDescription').textContent = d.description || 'No description';
+                    document.getElementById('detailSku').textContent = d.sku || '—';
+                    document.getElementById('detailCategory').textContent = d.category || '—';
+                    document.getElementById('detailPrice').textContent = '$' + (d.pricePerBox || 0).toFixed(2);
+                    document.getElementById('detailBoxesPerCase').textContent = d.boxesPerCase;
+                    document.getElementById('detailCost').textContent = d.cost != null ? '$' + d.cost.toFixed(2) : '—';
+                    document.getElementById('detailReward').textContent = d.reward != null ? '$' + d.reward.toFixed(2) : '—';
+                    document.getElementById('detailVendor').textContent = d.vendor || '—';
+                    document.getElementById('detailBarcode').textContent = d.barcode || '—';
+                    document.getElementById('detailStatus').innerHTML = d.active
+                        ? '<span class="badge light badge-success">Active</span>'
+                        : '<span class="badge light badge-secondary">Inactive</span>';
+
+                    var img = document.getElementById('detailImage');
+                    var noImg = document.getElementById('detailNoImage');
+                    if (d.imagePath) {
+                        img.src = d.imagePath;
+                        img.style.display = 'block';
+                        noImg.style.display = 'none';
+                    } else {
+                        img.style.display = 'none';
+                        noImg.style.display = 'block';
+                    }
+
+                    detailModalInstance = new bootstrap.Modal(document.getElementById('productDetailModal'));
+                    detailModalInstance.show();
+                });
+        }
+
+        // ── Open edit modal from detail ──
+        document.getElementById('detailEditBtn').addEventListener('click', function () {
+            if (detailModalInstance) detailModalInstance.hide();
+            fetch('@Url.Action("GetDetail", "Products")?id=' + currentProductId)
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    document.getElementById('editId').value = d.id;
+                    document.getElementById('editName').value = d.name || '';
+                    document.getElementById('editSku').value = d.sku || '';
+                    document.getElementById('editCategory').value = d.category || '';
+                    document.getElementById('editDescription').value = d.description || '';
+                    document.getElementById('editPrice').value = d.pricePerBox;
+                    document.getElementById('editBoxesPerCase').value = d.boxesPerCase;
+                    document.getElementById('editCost').value = d.cost ?? '';
+                    document.getElementById('editReward').value = d.reward ?? '';
+                    document.getElementById('editVendor').value = d.vendor || '';
+                    document.getElementById('editBarcode').value = d.barcode || '';
+                    document.getElementById('editImagePath').value = d.imagePath || '';
+                    document.getElementById('editActive').checked = d.active;
+
+                    editModalInstance = new bootstrap.Modal(document.getElementById('productEditModal'));
+                    editModalInstance.show();
+                });
+        });
+
+        // ── Save edit ──
+        document.getElementById('editSaveBtn').addEventListener('click', function () {
+            var cost = document.getElementById('editCost').value;
+            var reward = document.getElementById('editReward').value;
+            fetch('@Url.Action("Update", "Products")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({
+                    id: document.getElementById('editId').value,
+                    name: document.getElementById('editName').value,
+                    sku: document.getElementById('editSku').value || null,
+                    category: document.getElementById('editCategory').value || null,
+                    description: document.getElementById('editDescription').value || null,
+                    pricePerBox: parseFloat(document.getElementById('editPrice').value) || 0,
+                    boxesPerCase: parseInt(document.getElementById('editBoxesPerCase').value) || 12,
+                    cost: cost !== '' ? parseFloat(cost) : null,
+                    reward: reward !== '' ? parseFloat(reward) : null,
+                    vendor: document.getElementById('editVendor').value || null,
+                    barcode: document.getElementById('editBarcode').value || null,
+                    imagePath: document.getElementById('editImagePath').value || null,
+                    active: document.getElementById('editActive').checked
+                })
+            }).then(function (r) {
+                if (r.ok) location.reload();
+                else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+            });
+        });
+
+        // ── Delete product ──
+        document.getElementById('detailDeleteBtn').addEventListener('click', function () {
+            if (!confirm('Delete this product? This cannot be undone.')) return;
+            fetch('@Url.Action("Delete", "Products")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({ id: currentProductId })
+            }).then(function (r) {
+                if (r.ok) location.reload();
+                else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
+            });
+        });
+    </script>
+}

@@ -1,9 +1,66 @@
-@model IEnumerable<GS_CookieOrder_Tracker.Data.Order>
+@model GS_CookieOrder_Tracker.Models.OrdersIndexViewModel
 
 @{
     ViewData["Title"] = "Orders";
 }
 
+<!-- ═══════════ KPI CARDS ═══════════ -->
+<div class="row">
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-primary mb-0">@Model.TotalOrders</h4>
+                    <small class="text-muted">Total Orders</small>
+                </div>
+                <div class="icon-box bg-primary-light rounded-circle">
+                    <i class="fa fa-file-alt text-primary" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-success mb-0">@Model.TotalBoxesSold</h4>
+                    <small class="text-muted">Boxes Sold</small>
+                </div>
+                <div class="icon-box bg-success-light rounded-circle">
+                    <i class="fa fa-box text-success" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-info mb-0">@Model.TotalRevenue.ToString("C")</h4>
+                    <small class="text-muted">Total Revenue</small>
+                </div>
+                <div class="icon-box rounded-circle" style="background:rgba(54,153,255,.1)">
+                    <i class="fa fa-dollar-sign text-info" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="text-warning mb-0">@Model.TotalCollected.ToString("C")</h4>
+                    <small class="text-muted">Total Collected</small>
+                </div>
+                <div class="icon-box rounded-circle" style="background:rgba(248,185,64,.1)">
+                    <i class="fa fa-hand-holding-usd text-warning" style="font-size:1.2rem"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ ORDERS TABLE ═══════════ -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -15,23 +72,33 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-responsive-md table-hover">
+                    <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
+                        <colgroup>
+                            <col style="width:90px">  <!-- Date -->
+                            <col style="width:100px"> <!-- Type -->
+                            <col style="width:120px"> <!-- Customer -->
+                            <col style="width:100px"> <!-- Girl Scout -->
+                            <col style="width:120px"> <!-- Status -->
+                            <col style="width:55px">  <!-- Qty -->
+                            <col style="width:80px">  <!-- Total -->
+                            <col style="width:80px">  <!-- Paid -->
+                            <col style="width:75px">  <!-- Actions -->
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Date</th>
                                 <th>Type</th>
                                 <th>Customer</th>
                                 <th>Girl Scout</th>
-                                <th>Products</th>
                                 <th>Status</th>
-                                <th>Total Qty</th>
-                                <th>Total Price</th>
+                                <th>Qty</th>
+                                <th>Total</th>
                                 <th>Paid</th>
-                                <th style="width:100px"></th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var order in Model)
+                            @foreach (var order in Model.Orders)
                             {
                                 var typeClass = order.OrderType switch
                                 {
@@ -41,18 +108,12 @@
                                     _ => "badge-secondary"
                                 };
                                 <tr data-order-id="@order.Id">
-                                    <td>@order.OrderedAt.ToString("yyyy-MM-dd")</td>
-                                    <td><span class="badge light @typeClass">@order.OrderType</span></td>
-                                    <td>@order.Customer?.Name</td>
-                                    <td>@(order.GirlScout == null ? "Unassigned" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
+                                    <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                    <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
+                                    <td style="white-space:normal;word-break:break-word">@order.Customer?.Name</td>
+                                    <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
                                     <td>
-                                        @if (order.LineItems.Any())
-                                        {
-                                            <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
-                                        }
-                                    </td>
-                                    <td>
-                                        <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:130px">
+                                        <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:110px;font-size:.75rem;padding:2px 4px">
                                             @{
                                                 var statuses = new[] { "Pending", "Confirmed", "Paid", "Delivered", "Completed", "Cancelled" };
                                             }
@@ -69,12 +130,12 @@
                                             }
                                         </select>
                                     </td>
-                                    <td>@order.TotalQty</td>
-                                    <td>@order.TotalPrice?.ToString("C")</td>
-                                    <td>@order.PaidAmount?.ToString("C")</td>
+                                    <td class="text-center">@order.TotalQty</td>
+                                    <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
+                                    <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary detail-btn" data-order-id="@order.Id">
-                                            <i class="fa fa-eye"></i> Details
+                                        <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
+                                            <i class="fa fa-eye"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -96,12 +157,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Alert for completed orders -->
                 <div id="mdlCompletedAlert" class="alert alert-warning d-none">
                     <i class="fa fa-lock me-1"></i> This order is <strong>Completed</strong>. Change status to edit.
                 </div>
 
-                <!-- Order header info -->
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Customer</label>
@@ -162,7 +221,6 @@
 
                 <hr>
 
-                <!-- Line items table -->
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
                     <button type="button" class="btn btn-sm btn-outline-primary" id="mdlAddLineBtn">
@@ -183,7 +241,6 @@
                     <tbody id="mdlLineItemsBody"></tbody>
                 </table>
 
-                <!-- Add product row (hidden until "Add Product" clicked) -->
                 <div id="mdlAddLineRow" class="row align-items-end mb-2 d-none">
                     <div class="col-md-4">
                         <label class="form-label">Product</label>
@@ -270,20 +327,17 @@
             document.getElementById('mdlTotalPrice').textContent = '$' + (d.totalPrice || 0).toFixed(2);
             document.getElementById('mdlPaidAmount').textContent = '$' + (d.paidAmount || 0).toFixed(2);
 
-            // Editable fields
             document.getElementById('mdlStatus').value = d.status || 'Pending';
             document.getElementById('mdlPaymentMethod').value = d.paymentMethod || 'Cash';
             document.getElementById('mdlNotes').value = d.notes || '';
 
-            // Lock editable fields if completed
-            var alert = document.getElementById('mdlCompletedAlert');
-            alert.classList.toggle('d-none', !isCompleted);
+            var alertEl = document.getElementById('mdlCompletedAlert');
+            alertEl.classList.toggle('d-none', !isCompleted);
             document.getElementById('mdlPaymentMethod').disabled = isCompleted;
             document.getElementById('mdlNotes').disabled = isCompleted;
             document.getElementById('mdlAddLineBtn').disabled = isCompleted;
             document.getElementById('mdlSaveBtn').disabled = isCompleted;
 
-            // Line items
             var tbody = document.getElementById('mdlLineItemsBody');
             tbody.innerHTML = '';
             d.lineItems.forEach(function (li) {
@@ -298,18 +352,15 @@
                 tbody.appendChild(tr);
             });
 
-            // Product dropdown for adding
             var prodSel = document.getElementById('mdlNewProductId');
             prodSel.innerHTML = '<option value="">-- select --</option>';
             d.products.forEach(function (p) {
                 prodSel.innerHTML += '<option value="' + p.id + '">' + p.name + ' ($' + p.price.toFixed(2) + ')</option>';
             });
 
-            // Hide the add row
             document.getElementById('mdlAddLineRow').classList.add('d-none');
         }
 
-        // ── Save order changes ──
         document.getElementById('mdlSaveBtn').addEventListener('click', function () {
             fetch('@Url.Action("UpdateOrder", "Orders")', {
                 method: 'POST',
@@ -326,7 +377,6 @@
             });
         });
 
-        // ── Remove line item ──
         document.getElementById('mdlLineItemsBody').addEventListener('click', function (e) {
             var btn = e.target.closest('.mdl-remove-line');
             if (!btn) return;
@@ -341,7 +391,6 @@
             });
         });
 
-        // ── Show add-line row ──
         document.getElementById('mdlAddLineBtn').addEventListener('click', function () {
             document.getElementById('mdlAddLineRow').classList.remove('d-none');
             document.getElementById('mdlNewQty').value = 1;
@@ -350,7 +399,6 @@
             document.getElementById('mdlAddLineRow').classList.add('d-none');
         });
 
-        // ── Confirm add line item ──
         document.getElementById('mdlConfirmAddLine').addEventListener('click', function () {
             var productId = document.getElementById('mdlNewProductId').value;
             var qty = parseInt(document.getElementById('mdlNewQty').value) || 1;
@@ -370,7 +418,6 @@
             });
         });
 
-        // ── When status changes in modal, toggle lock ──
         document.getElementById('mdlStatus').addEventListener('change', function () {
             var isCompleted = this.value === 'Completed';
             document.getElementById('mdlCompletedAlert').classList.toggle('d-none', !isCompleted);

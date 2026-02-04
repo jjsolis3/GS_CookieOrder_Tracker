@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GS_CookieOrder_Tracker.Controllers;
 
 [Authorize]
+[AutoValidateAntiforgeryToken]
 public class ProductsController : Controller
 {
     private readonly AppDbContext _dbContext;
@@ -65,4 +66,92 @@ public class ProductsController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    // ───────── AJAX: Get product detail ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetDetail(Guid id)
+    {
+        var p = await _dbContext.Products.FindAsync(id);
+        if (p == null) return NotFound();
+
+        return Json(new
+        {
+            id = p.Id,
+            name = p.Name,
+            sku = p.Sku,
+            pricePerBox = p.PricePerBox,
+            description = p.Description,
+            boxesPerCase = p.BoxesPerCase,
+            active = p.Active,
+            imagePath = p.ImagePath,
+            category = p.Category,
+            vendor = p.Vendor,
+            cost = p.Cost,
+            reward = p.Reward,
+            barcode = p.Barcode
+        });
+    }
+
+    // ───────── AJAX: Update product ─────────
+    [HttpPost]
+    public async Task<IActionResult> Update([FromBody] UpdateProductRequest req)
+    {
+        var p = await _dbContext.Products.FindAsync(req.Id);
+        if (p == null) return NotFound();
+
+        p.Name = req.Name ?? p.Name;
+        p.Sku = req.Sku;
+        p.PricePerBox = req.PricePerBox ?? p.PricePerBox;
+        p.Description = req.Description;
+        p.BoxesPerCase = req.BoxesPerCase ?? p.BoxesPerCase;
+        p.Active = req.Active ?? p.Active;
+        p.ImagePath = req.ImagePath;
+        p.Category = req.Category;
+        p.Vendor = req.Vendor;
+        p.Cost = req.Cost;
+        p.Reward = req.Reward;
+        p.Barcode = req.Barcode;
+        p.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Delete product ─────────
+    [HttpPost]
+    public async Task<IActionResult> Delete([FromBody] DeleteProductRequest req)
+    {
+        var p = await _dbContext.Products.FindAsync(req.Id);
+        if (p == null) return NotFound();
+
+        var inUse = await _dbContext.OrderLineItems.AnyAsync(li => li.ProductId == req.Id);
+        if (inUse)
+            return BadRequest(new { error = "Cannot delete a product that has been used in orders. Deactivate it instead." });
+
+        _dbContext.Products.Remove(p);
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+}
+
+public class UpdateProductRequest
+{
+    public Guid Id { get; set; }
+    public string? Name { get; set; }
+    public string? Sku { get; set; }
+    public decimal? PricePerBox { get; set; }
+    public string? Description { get; set; }
+    public int? BoxesPerCase { get; set; }
+    public bool? Active { get; set; }
+    public string? ImagePath { get; set; }
+    public string? Category { get; set; }
+    public string? Vendor { get; set; }
+    public decimal? Cost { get; set; }
+    public decimal? Reward { get; set; }
+    public string? Barcode { get; set; }
+}
+
+public class DeleteProductRequest
+{
+    public Guid Id { get; set; }
 }

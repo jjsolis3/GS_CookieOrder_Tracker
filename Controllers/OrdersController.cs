@@ -28,7 +28,16 @@ public class OrdersController : Controller
             .OrderByDescending(o => o.OrderedAt)
             .ToListAsync();
 
-        return View(orders);
+        var vm = new OrdersIndexViewModel
+        {
+            Orders = orders,
+            TotalOrders = orders.Count,
+            TotalBoxesSold = orders.Where(o => o.Status != "Cancelled").Sum(o => o.TotalQty ?? 0),
+            TotalRevenue = orders.Where(o => o.Status != "Cancelled").Sum(o => o.TotalPrice ?? 0),
+            TotalCollected = orders.Where(o => o.Status != "Cancelled").Sum(o => o.PaidAmount ?? 0)
+        };
+
+        return View(vm);
     }
 
     // ───────── CREATE GET ─────────
