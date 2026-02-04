@@ -80,6 +80,8 @@
 
 @section Scripts {
     <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
         // ── Update role ──
         document.querySelectorAll('.role-select').forEach(function (sel) {
             sel.addEventListener('change', function () {
@@ -87,7 +89,7 @@
                 var role = this.value;
                 fetch('@Url.Action("UpdateRole", "Users")', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                     body: JSON.stringify({ userId: userId, role: role })
                 }).then(function (r) {
                     if (!r.ok) alert('Failed to update role.');
@@ -102,7 +104,7 @@
                 if (!confirm('Send password reset email to ' + email + '?')) return;
                 fetch('@Url.Action("SendReset", "Users")', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                     body: JSON.stringify({ email: email })
                 }).then(function (r) {
                     if (r.ok) alert('Reset email sent to ' + email);
@@ -119,7 +121,7 @@
                 if (!confirm('Delete user ' + email + '? This cannot be undone.')) return;
                 fetch('@Url.Action("Delete", "Users")', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                     body: JSON.stringify({ userId: userId })
                 }).then(function (r) {
                     if (r.ok) location.reload();

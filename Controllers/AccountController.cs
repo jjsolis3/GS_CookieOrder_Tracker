@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GS_CookieOrder_Tracker.Controllers;
 
+[AutoValidateAntiforgeryToken]
 public class AccountController : Controller
 {
     private readonly SupabaseAuthService _authService;

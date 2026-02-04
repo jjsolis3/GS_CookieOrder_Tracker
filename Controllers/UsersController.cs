@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GS_CookieOrder_Tracker.Controllers;
 
 [Authorize]
+[AutoValidateAntiforgeryToken]
 public class UsersController : Controller
 {
     private readonly SupabaseAdminService _adminService;

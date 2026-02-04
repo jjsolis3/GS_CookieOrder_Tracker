@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using GS_CookieOrder_Tracker.Data;
 using GS_CookieOrder_Tracker.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace GS_CookieOrder_Tracker.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;

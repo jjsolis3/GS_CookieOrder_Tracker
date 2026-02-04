@@ -222,6 +222,7 @@
 
 @section Scripts {
     <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         var currentOrderId = null;
         var currentOrderData = null;
 
@@ -232,7 +233,7 @@
                 var newStatus = this.value;
                 fetch('@Url.Action("UpdateStatus", "Orders")', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                     body: JSON.stringify({ orderId: orderId, status: newStatus })
                 }).then(function (r) {
                     if (!r.ok) { alert('Failed to update status.'); location.reload(); }
@@ -312,7 +313,7 @@
         document.getElementById('mdlSaveBtn').addEventListener('click', function () {
             fetch('@Url.Action("UpdateOrder", "Orders")', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({
                     orderId: currentOrderId,
                     status: document.getElementById('mdlStatus').value,
@@ -332,7 +333,7 @@
             if (!confirm('Remove this line item?')) return;
             fetch('@Url.Action("RemoveLineItem", "Orders")', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({ lineItemId: btn.dataset.lineId })
             }).then(function (r) {
                 if (r.ok) loadOrderDetail(currentOrderId);
@@ -358,7 +359,7 @@
 
             fetch('@Url.Action("AddLineItem", "Orders")', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({ orderId: currentOrderId, productId: productId, quantityBoxes: qty, inventorySource: source })
             }).then(function (r) {
                 if (r.ok) {

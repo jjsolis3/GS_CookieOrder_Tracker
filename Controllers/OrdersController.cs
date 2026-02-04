@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GS_CookieOrder_Tracker.Controllers;
 
 [Authorize]
+[AutoValidateAntiforgeryToken]
 public class OrdersController : Controller
 {
     private readonly AppDbContext _dbContext;

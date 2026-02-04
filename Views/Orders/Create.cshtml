@@ -156,6 +156,7 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         // Cache product options HTML from the first row for reuse
         var productOptionsHtml = document.querySelector('.line-item .product-select').innerHTML;
         var invSourceOptionsHtml = document.querySelector('.inv-source-select') ? document.querySelector('.inv-source-select').innerHTML : '<option value="Personal">Personal</option><option value="Troop">Troop</option>';
@@ -246,7 +247,7 @@
             }
             fetch('@Url.Action("QuickCreate", "Customers")', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({
                     name: name,
                     email: document.getElementById('custEmail').value.trim() || null,
