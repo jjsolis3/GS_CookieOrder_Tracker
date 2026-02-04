@@ -6,21 +6,18 @@ namespace GS_CookieOrder_Tracker.Models;
 public class PaybackCreateViewModel
 {
     [Required]
-    public Guid OrderId { get; set; }
-
-    public Guid? CustomerId { get; set; }
-
-    [Required]
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
 
-    [Range(0.01, double.MaxValue)]
-    public decimal Amount { get; set; }
-
+    [Required]
     [MaxLength(50)]
-    public string? Method { get; set; }
+    public string Method { get; set; } = "Check";
 
     public string? Notes { get; set; }
 
+    // Dropdown options
     public List<SelectListItem> Orders { get; set; } = new();
-    public List<SelectListItem> Customers { get; set; } = new();
+    public List<SelectListItem> PaymentMethods { get; set; } = new();
+
+    // Order amounts for JS auto-fill (OrderId -> TotalPrice)
+    public Dictionary<string, decimal> OrderAmounts { get; set; } = new();
 }

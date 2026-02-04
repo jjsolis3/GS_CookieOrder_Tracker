@@ -19,22 +19,101 @@ public class OrdersController : Controller
     }
 
     // ───────── LIST ─────────
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(
+        string? search,
+        string? orderType,
+        string? status,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        int page = 1,
+        int pageSize = 25)
     {
-        var orders = await _dbContext.Orders
+        var query = _dbContext.Orders
             .Include(o => o.Customer)
             .Include(o => o.GirlScout)
             .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .AsQueryable();
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(o =>
+                (o.Customer != null && o.Customer.Name.ToLower().Contains(term)) ||
+                (o.GirlScout != null && (o.GirlScout.FirstName.ToLower().Contains(term) || o.GirlScout.LastName.ToLower().Contains(term))) ||
+                (o.Notes != null && o.Notes.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(orderType))
+            query = query.Where(o => o.OrderType == orderType);
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(o => o.Status == status);
+
+        if (dateFrom.HasValue)
+        {
+            var fromUtc = DateTime.SpecifyKind(dateFrom.Value.Date, DateTimeKind.Utc);
+            query = query.Where(o => o.OrderedAt >= fromUtc);
+        }
+
+        if (dateTo.HasValue)
+        {
+            var toUtc = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(o => o.OrderedAt < toUtc);
+        }
+
+        // Get totals for KPI (filtered, excluding cancelled)
+        var filteredForKpi = query.Where(o => o.Status != "Cancelled");
+        var totalFiltered = await query.CountAsync();
+        var kpiOrders = await filteredForKpi.CountAsync();
+        var kpiBoxes = await filteredForKpi.SumAsync(o => o.TotalQty ?? 0);
+        var kpiRevenue = await filteredForKpi.SumAsync(o => o.TotalPrice ?? 0);
+        var kpiCollected = await filteredForKpi.SumAsync(o => o.PaidAmount ?? 0);
+
+        // Pagination
+        var totalPages = (int)Math.Ceiling(totalFiltered / (double)pageSize);
+        if (page < 1) page = 1;
+        if (page > totalPages && totalPages > 0) page = totalPages;
+
+        var orders = await query
             .OrderByDescending(o => o.OrderedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         var vm = new OrdersIndexViewModel
         {
             Orders = orders,
-            TotalOrders = orders.Count,
-            TotalBoxesSold = orders.Where(o => o.Status != "Cancelled").Sum(o => o.TotalQty ?? 0),
-            TotalRevenue = orders.Where(o => o.Status != "Cancelled").Sum(o => o.TotalPrice ?? 0),
-            TotalCollected = orders.Where(o => o.Status != "Cancelled").Sum(o => o.PaidAmount ?? 0)
+            TotalOrders = kpiOrders,
+            TotalBoxesSold = kpiBoxes,
+            TotalRevenue = kpiRevenue,
+            TotalCollected = kpiCollected,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = totalPages,
+            TotalFilteredCount = totalFiltered,
+            SearchTerm = search,
+            OrderTypeFilter = orderType,
+            StatusFilter = status,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            OrderTypes = new List<SelectListItem>
+            {
+                new("All Types", ""),
+                new("Direct Sale", "Direct Sale"),
+                new("Online Delivery", "Online Delivery"),
+                new("Booth Sale", "Booth Sale")
+            },
+            Statuses = new List<SelectListItem>
+            {
+                new("All Statuses", ""),
+                new("Pending", "Pending"),
+                new("Confirmed", "Confirmed"),
+                new("Paid", "Paid"),
+                new("Delivered", "Delivered"),
+                new("Completed", "Completed"),
+                new("Cancelled", "Cancelled")
+            }
         };
 
         return View(vm);

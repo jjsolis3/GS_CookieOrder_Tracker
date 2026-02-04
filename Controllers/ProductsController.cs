@@ -17,12 +17,29 @@ public class ProductsController : Controller
         _dbContext = dbContext;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, string? status)
     {
-        var products = await _dbContext.Products
-            .OrderBy(p => p.Name)
-            .ToListAsync();
+        var query = _dbContext.Products.AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(p =>
+                p.Name.ToLower().Contains(term) ||
+                (p.Sku != null && p.Sku.ToLower().Contains(term)) ||
+                (p.Category != null && p.Category.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status == "active") query = query.Where(p => p.Active);
+            else if (status == "inactive") query = query.Where(p => !p.Active);
+        }
+
+        var products = await query.OrderBy(p => p.Name).ToListAsync();
+
+        ViewBag.SearchTerm = search;
+        ViewBag.StatusFilter = status;
         return View(products);
     }
 

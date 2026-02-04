@@ -16,4 +16,7 @@ public class BoothingViewModel
     public List<SelectListItem> Products { get; set; } = new();
     public Dictionary<string, decimal> ProductPrices { get; set; } = new();
     public List<SelectListItem> PaymentMethods { get; set; } = new();
+
+    // Booth location suggestions (recent locations used)
+    public List<string> RecentLocations { get; set; } = new();
 }

@@ -60,89 +60,218 @@
     </div>
 </div>
 
+<!-- ═══════════ FILTERS ═══════════ -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-2">
+                <form method="get" class="row align-items-end g-2">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small mb-1">Search</label>
+                        <input type="text" name="search" value="@Model.SearchTerm" class="form-control form-control-sm" placeholder="Customer, Scout, Notes..." />
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Order Type</label>
+                        <select name="orderType" class="form-select form-select-sm">
+                            @foreach (var item in Model.OrderTypes)
+                            {
+                                if (item.Value == Model.OrderTypeFilter)
+                                {
+                                    <option value="@item.Value" selected>@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Status</label>
+                        <select name="status" class="form-select form-select-sm">
+                            @foreach (var item in Model.Statuses)
+                            {
+                                if (item.Value == Model.StatusFilter)
+                                {
+                                    <option value="@item.Value" selected>@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">From Date</label>
+                        <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">To Date</label>
+                        <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-1 col-sm-12">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════ ORDERS TABLE ═══════════ -->
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title">Orders</h4>
+                <h4 class="card-title mb-0">
+                    Orders
+                    @if (Model.TotalFilteredCount > 0)
+                    {
+                        <small class="text-muted ms-2">(@Model.TotalFilteredCount found)</small>
+                    }
+                </h4>
                 <a class="btn btn-primary btn-sm" asp-action="Create">
                     <i class="fa fa-plus me-1"></i> New Order
                 </a>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
-                        <colgroup>
-                            <col style="width:90px">  <!-- Date -->
-                            <col style="width:100px"> <!-- Type -->
-                            <col style="width:120px"> <!-- Customer -->
-                            <col style="width:100px"> <!-- Girl Scout -->
-                            <col style="width:120px"> <!-- Status -->
-                            <col style="width:55px">  <!-- Qty -->
-                            <col style="width:80px">  <!-- Total -->
-                            <col style="width:80px">  <!-- Paid -->
-                            <col style="width:75px">  <!-- Actions -->
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Customer</th>
-                                <th>Girl Scout</th>
-                                <th>Status</th>
-                                <th>Qty</th>
-                                <th>Total</th>
-                                <th>Paid</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var order in Model.Orders)
-                            {
-                                var typeClass = order.OrderType switch
-                                {
-                                    "Direct Sale" => "badge-primary",
-                                    "Online Delivery" => "badge-info",
-                                    "Booth Sale" => "badge-success",
-                                    _ => "badge-secondary"
-                                };
-                                <tr data-order-id="@order.Id">
-                                    <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
-                                    <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
-                                    <td style="white-space:normal;word-break:break-word">@order.Customer?.Name</td>
-                                    <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
-                                    <td>
-                                        <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:110px;font-size:.75rem;padding:2px 4px">
-                                            @{
-                                                var statuses = new[] { "Pending", "Confirmed", "Paid", "Delivered", "Completed", "Cancelled" };
-                                            }
-                                            @foreach (var s in statuses)
-                                            {
-                                                if (s == order.Status)
-                                                {
-                                                    <option value="@s" selected="selected">@s</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="@s">@s</option>
-                                                }
-                                            }
-                                        </select>
-                                    </td>
-                                    <td class="text-center">@order.TotalQty</td>
-                                    <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
-                                    <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
-                                    <td>
-                                        <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
-                                            <i class="fa fa-eye"></i>
-                                        </button>
-                                    </td>
+                @if (!Model.Orders.Any())
+                {
+                    <p class="text-muted text-center py-4">No orders found matching your criteria.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
+                            <colgroup>
+                                <col style="width:90px">  <!-- Date -->
+                                <col style="width:100px"> <!-- Type -->
+                                <col style="width:120px"> <!-- Customer -->
+                                <col style="width:100px"> <!-- Girl Scout -->
+                                <col style="width:120px"> <!-- Status -->
+                                <col style="width:55px">  <!-- Qty -->
+                                <col style="width:80px">  <!-- Total -->
+                                <col style="width:80px">  <!-- Paid -->
+                                <col style="width:75px">  <!-- Actions -->
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Customer</th>
+                                    <th>Girl Scout</th>
+                                    <th>Status</th>
+                                    <th>Qty</th>
+                                    <th>Total</th>
+                                    <th>Paid</th>
+                                    <th></th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in Model.Orders)
+                                {
+                                    var typeClass = order.OrderType switch
+                                    {
+                                        "Direct Sale" => "badge-primary",
+                                        "Online Delivery" => "badge-info",
+                                        "Booth Sale" => "badge-success",
+                                        _ => "badge-secondary"
+                                    };
+                                    <tr data-order-id="@order.Id">
+                                        <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                        <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
+                                        <td style="white-space:normal;word-break:break-word">@order.Customer?.Name</td>
+                                        <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
+                                        <td>
+                                            <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:110px;font-size:.75rem;padding:2px 4px">
+                                                @{
+                                                    var statuses = new[] { "Pending", "Confirmed", "Paid", "Delivered", "Completed", "Cancelled" };
+                                                }
+                                                @foreach (var s in statuses)
+                                                {
+                                                    if (s == order.Status)
+                                                    {
+                                                        <option value="@s" selected="selected">@s</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@s">@s</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </td>
+                                        <td class="text-center">@order.TotalQty</td>
+                                        <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
+                                        <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
+                                        <td>
+                                            <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
+                                                <i class="fa fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (Model.TotalPages > 1)
+                    {
+                        <nav class="mt-3">
+                            <ul class="pagination pagination-sm justify-content-center mb-0">
+                                @{
+                                    var queryParams = new Dictionary<string, string?>
+                                    {
+                                        { "search", Model.SearchTerm },
+                                        { "orderType", Model.OrderTypeFilter },
+                                        { "status", Model.StatusFilter },
+                                        { "dateFrom", Model.DateFrom?.ToString("yyyy-MM-dd") },
+                                        { "dateTo", Model.DateTo?.ToString("yyyy-MM-dd") },
+                                        { "pageSize", Model.PageSize.ToString() }
+                                    };
+                                }
+
+                                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?>(queryParams) { ["page"] = "1" })">
+                                        <i class="fa fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?>(queryParams) { ["page"] = (Model.CurrentPage - 1).ToString() })">
+                                        <i class="fa fa-angle-left"></i>
+                                    </a>
+                                </li>
+
+                                @{
+                                    var startPage = Math.Max(1, Model.CurrentPage - 2);
+                                    var endPage = Math.Min(Model.TotalPages, startPage + 4);
+                                    if (endPage - startPage < 4) startPage = Math.Max(1, endPage - 4);
+                                }
+
+                                @for (var p = startPage; p <= endPage; p++)
+                                {
+                                    <li class="page-item @(p == Model.CurrentPage ? "active" : "")">
+                                        <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?>(queryParams) { ["page"] = p.ToString() })">@p</a>
+                                    </li>
+                                }
+
+                                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?>(queryParams) { ["page"] = (Model.CurrentPage + 1).ToString() })">
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?>(queryParams) { ["page"] = Model.TotalPages.ToString() })">
+                                        <i class="fa fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                }
             </div>
         </div>
     </div>
