@@ -19,9 +19,30 @@
                     <div class="col-md-3 col-sm-4">
                         <label class="form-label small mb-1">Status</label>
                         <select name="status" class="form-select form-select-sm">
-                            <option value="" @(string.IsNullOrEmpty(statusFilter) ? "selected" : "")>All</option>
-                            <option value="active" @(statusFilter == "active" ? "selected" : "")>Active Only</option>
-                            <option value="inactive" @(statusFilter == "inactive" ? "selected" : "")>Inactive Only</option>
+                            @if (string.IsNullOrEmpty(statusFilter))
+                            {
+                                <option value="" selected>All</option>
+                            }
+                            else
+                            {
+                                <option value="">All</option>
+                            }
+                            @if (statusFilter == "active")
+                            {
+                                <option value="active" selected>Active Only</option>
+                            }
+                            else
+                            {
+                                <option value="active">Active Only</option>
+                            }
+                            @if (statusFilter == "inactive")
+                            {
+                                <option value="inactive" selected>Inactive Only</option>
+                            }
+                            else
+                            {
+                                <option value="inactive">Inactive Only</option>
+                            }
                         </select>
                     </div>
                     <div class="col-md-3 col-sm-12">

@@ -22,7 +22,14 @@
                         <select id="paybackMethod" class="form-select form-select-sm">
                             @foreach (var pm in Model.PaymentMethods)
                             {
-                                <option value="@pm.Value" @(pm.Value == Model.Method ? "selected" : "")>@pm.Text</option>
+                                if (pm.Value == Model.Method)
+                                {
+                                    <option value="@pm.Value" selected>@pm.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@pm.Value">@pm.Text</option>
+                                }
                             }
                         </select>
                     </div>
