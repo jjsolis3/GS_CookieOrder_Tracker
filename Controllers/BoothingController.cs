@@ -40,6 +40,7 @@ public class BoothingController : Controller
         {
             orders = await _dbContext.Orders
                 .Include(o => o.LineItems).ThenInclude(li => li.Product)
+                .Include(o => o.GirlScout)
                 .Where(o => o.BoothSessionId == activeSession.Id)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
@@ -48,6 +49,7 @@ public class BoothingController : Controller
         {
             orders = await _dbContext.Orders
                 .Include(o => o.LineItems).ThenInclude(li => li.Product)
+                .Include(o => o.GirlScout)
                 .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt.Date == targetDate)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
@@ -66,6 +68,12 @@ public class BoothingController : Controller
             PricePerBox = p.PricePerBox,
             ImagePath = p.ImagePath
         }).ToList();
+
+        // Girl Scouts for per-sale attribution
+        var scouts = await _dbContext.GirlScouts
+            .OrderBy(s => s.FirstName).ThenBy(s => s.LastName)
+            .Select(s => new SelectListItem($"{s.FirstName} {s.LastName}", s.Id.ToString()))
+            .ToListAsync();
 
         // Recent locations for autocomplete
         var recentLocations = await _dbContext.BoothSessions
@@ -116,6 +124,7 @@ public class BoothingController : Controller
                 new("Zelle", "Zelle"),
                 new("Other", "Other")
             },
+            Scouts = scouts,
             RecentLocations = uniqueLocations,
             ActiveSession = activeSession != null ? new BoothSessionInfo
             {
@@ -213,6 +222,14 @@ public class BoothingController : Controller
             notes += req.Notes.Trim();
         notes = notes.Trim();
 
+        // Resolve scout name if provided
+        string? scoutName = null;
+        if (req.GirlScoutId.HasValue)
+        {
+            var scout = await _dbContext.GirlScouts.FindAsync(req.GirlScoutId.Value);
+            if (scout != null) scoutName = $"{scout.FirstName} {scout.LastName}";
+        }
+
         var order = new Order
         {
             Id = Guid.NewGuid(),
@@ -226,12 +243,14 @@ public class BoothingController : Controller
             TotalPrice = totalPrice,
             PaidAmount = totalPrice,
             BoothSessionId = req.SessionId,
+            GirlScoutId = req.GirlScoutId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         _dbContext.Orders.Add(order);
 
+        var lineItemDetails = new List<object>();
         foreach (var item in req.Items)
         {
             if (!products.ContainsKey(item.ProductId)) continue;
@@ -246,10 +265,55 @@ public class BoothingController : Controller
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
+            lineItemDetails.Add(new
+            {
+                productName = products[item.ProductId].Name,
+                qty = item.Qty
+            });
         }
 
         await _dbContext.SaveChangesAsync();
-        return Ok(new { success = true, orderId = order.Id });
+
+        // Return updated session totals for real-time counter
+        int sessionSaleCount = 0, sessionTotalBoxes = 0;
+        decimal sessionTotalRevenue = 0;
+        if (req.SessionId.HasValue)
+        {
+            var sessionOrders = await _dbContext.Orders
+                .Where(o => o.BoothSessionId == req.SessionId.Value)
+                .ToListAsync();
+            sessionSaleCount = sessionOrders.Count;
+            sessionTotalBoxes = sessionOrders.Sum(o => o.TotalQty ?? 0);
+            sessionTotalRevenue = sessionOrders.Sum(o => o.TotalPrice ?? 0);
+        }
+
+        return Ok(new
+        {
+            success = true,
+            orderId = order.Id,
+            // Sale details for adding row to table
+            sale = new
+            {
+                id = order.Id,
+                time = order.CreatedAt.ToString("h:mm tt"),
+                products = string.Join(", ", lineItemDetails.Select(li =>
+                {
+                    var d = (dynamic)li;
+                    return $"{d.productName} x{d.qty}";
+                })),
+                paymentMethod = order.PaymentMethod,
+                totalQty = order.TotalQty,
+                totalPrice = order.TotalPrice,
+                scoutName = scoutName
+            },
+            // Updated session KPIs for real-time counter
+            kpi = new
+            {
+                saleCount = sessionSaleCount,
+                totalBoxes = sessionTotalBoxes,
+                totalRevenue = sessionTotalRevenue
+            }
+        });
     }
 
     // ───────── GET SALE DETAIL (for edit modal) ─────────
@@ -258,6 +322,7 @@ public class BoothingController : Controller
     {
         var order = await _dbContext.Orders
             .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .Include(o => o.GirlScout)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null) return NotFound();
@@ -267,6 +332,8 @@ public class BoothingController : Controller
             id = order.Id,
             paymentMethod = order.PaymentMethod,
             notes = order.Notes,
+            girlScoutId = order.GirlScoutId,
+            scoutName = order.GirlScout != null ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}" : null,
             lineItems = order.LineItems.Select(li => new
             {
                 id = li.Id,
@@ -289,9 +356,10 @@ public class BoothingController : Controller
 
         if (order == null) return NotFound(new { error = "Sale not found." });
 
-        // Update payment method and notes
+        // Update payment method, notes, and scout
         order.PaymentMethod = req.PaymentMethod ?? order.PaymentMethod;
         order.Notes = req.Notes;
+        order.GirlScoutId = req.GirlScoutId;
         order.UpdatedAt = DateTime.UtcNow;
 
         if (req.Items != null && req.Items.Count > 0)
@@ -363,12 +431,14 @@ public class BoothingController : Controller
 
         List<Order> orders;
         string fileLabel;
+        BoothSession? session = null;
 
         if (sessionId.HasValue)
         {
-            var session = await _dbContext.BoothSessions.FindAsync(sessionId.Value);
+            session = await _dbContext.BoothSessions.FindAsync(sessionId.Value);
             orders = await _dbContext.Orders
                 .Include(o => o.LineItems).ThenInclude(li => li.Product)
+                .Include(o => o.GirlScout)
                 .Where(o => o.BoothSessionId == sessionId.Value)
                 .OrderBy(o => o.CreatedAt)
                 .ToListAsync();
@@ -380,6 +450,7 @@ public class BoothingController : Controller
         {
             orders = await _dbContext.Orders
                 .Include(o => o.LineItems).ThenInclude(li => li.Product)
+                .Include(o => o.GirlScout)
                 .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt.Date == targetDate)
                 .OrderBy(o => o.CreatedAt)
                 .ToListAsync();
@@ -387,7 +458,21 @@ public class BoothingController : Controller
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine("Sale #,Time,Products,Payment Method,Boxes,Total,Notes");
+
+        // Session info header
+        if (session != null)
+        {
+            sb.AppendLine($"Booth Session: {session.Location}");
+            sb.AppendLine($"Started: {session.StartedAt:yyyy-MM-dd HH:mm}");
+            if (session.EndedAt.HasValue)
+                sb.AppendLine($"Ended: {session.EndedAt.Value:yyyy-MM-dd HH:mm}");
+            sb.AppendLine($"Scout Count: {session.ScoutCount}");
+            if (!string.IsNullOrWhiteSpace(session.Notes))
+                sb.AppendLine($"Notes: {session.Notes}");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("Sale #,Time,Scout,Products,Payment Method,Boxes,Total,Notes");
 
         var counter = 1;
         foreach (var order in orders)
@@ -403,16 +488,107 @@ public class BoothingController : Controller
             }
 
             var products = string.Join("; ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
+            var scoutName = order.GirlScout != null
+                ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}"
+                : "";
 
-            sb.AppendLine($"{counter},{order.CreatedAt:HH:mm},\"{EscapeCsv(products)}\",{order.PaymentMethod},{order.TotalQty},{order.TotalPrice:F2},\"{EscapeCsv(notes)}\"");
+            sb.AppendLine($"{counter},{order.CreatedAt:HH:mm},\"{EscapeCsv(scoutName)}\",\"{EscapeCsv(products)}\",{order.PaymentMethod},{order.TotalQty},{order.TotalPrice:F2},\"{EscapeCsv(notes)}\"");
             counter++;
         }
 
         sb.AppendLine();
-        sb.AppendLine($"TOTALS,,,,{orders.Sum(o => o.TotalQty ?? 0)},{orders.Sum(o => o.TotalPrice ?? 0):F2},");
+        sb.AppendLine($"TOTALS,,,,,{orders.Sum(o => o.TotalQty ?? 0)},{orders.Sum(o => o.TotalPrice ?? 0):F2},");
+
+        // Per-scout breakdown
+        var scoutGroups = orders
+            .Where(o => o.GirlScout != null)
+            .GroupBy(o => new { o.GirlScoutId, Name = $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}" })
+            .Select(g => new
+            {
+                g.Key.Name,
+                Sales = g.Count(),
+                Boxes = g.Sum(o => o.TotalQty ?? 0),
+                Revenue = g.Sum(o => o.TotalPrice ?? 0)
+            })
+            .OrderByDescending(g => g.Boxes)
+            .ToList();
+
+        if (scoutGroups.Any())
+        {
+            sb.AppendLine();
+            sb.AppendLine("PER-SCOUT BREAKDOWN");
+            sb.AppendLine("Scout,Sales,Boxes,Revenue");
+            foreach (var sg in scoutGroups)
+            {
+                sb.AppendLine($"\"{EscapeCsv(sg.Name)}\",{sg.Sales},{sg.Boxes},{sg.Revenue:F2}");
+            }
+
+            var unattributed = orders.Where(o => o.GirlScout == null).ToList();
+            if (unattributed.Any())
+            {
+                sb.AppendLine($"\"(Unattributed)\",{unattributed.Count},{unattributed.Sum(o => o.TotalQty ?? 0)},{unattributed.Sum(o => o.TotalPrice ?? 0):F2}");
+            }
+        }
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
         return File(bytes, "text/csv", $"{fileLabel}.csv");
+    }
+
+    // ───────── BOOTH SESSION HISTORY ─────────
+    [HttpGet]
+    public async Task<IActionResult> History()
+    {
+        var sessions = await _dbContext.BoothSessions
+            .Include(s => s.Orders)
+            .OrderByDescending(s => s.StartedAt)
+            .ToListAsync();
+
+        var sessionRows = sessions.Select(s => new BoothSessionRow
+        {
+            Id = s.Id,
+            Location = s.Location,
+            StartedAt = s.StartedAt,
+            EndedAt = s.EndedAt,
+            ScoutCount = s.ScoutCount,
+            Notes = s.Notes,
+            SaleCount = s.Orders.Count,
+            TotalBoxes = s.Orders.Sum(o => o.TotalQty ?? 0),
+            TotalRevenue = s.Orders.Sum(o => o.TotalPrice ?? 0)
+        }).ToList();
+
+        // Per-scout breakdown across all booth sales
+        var allBoothOrders = await _dbContext.Orders
+            .Include(o => o.GirlScout)
+            .Where(o => o.OrderType == "Booth Sale" && o.GirlScoutId != null)
+            .ToListAsync();
+
+        var scoutBreakdown = allBoothOrders
+            .GroupBy(o => new { o.GirlScoutId, Name = $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}" })
+            .Select(g => new ScoutContribution
+            {
+                ScoutId = g.Key.GirlScoutId!.Value,
+                ScoutName = g.Key.Name,
+                SaleCount = g.Count(),
+                TotalBoxes = g.Sum(o => o.TotalQty ?? 0),
+                TotalRevenue = g.Sum(o => o.TotalPrice ?? 0)
+            })
+            .OrderByDescending(s => s.TotalBoxes)
+            .ToList();
+
+        var completedSessions = sessionRows.Where(s => s.EndedAt != null).ToList();
+
+        var vm = new BoothHistoryViewModel
+        {
+            Sessions = sessionRows,
+            TotalSessions = sessions.Count,
+            TotalBoxesSold = sessionRows.Sum(s => s.TotalBoxes),
+            TotalRevenue = sessionRows.Sum(s => s.TotalRevenue),
+            AvgBoxesPerSession = completedSessions.Any() ? (decimal)completedSessions.Average(s => s.TotalBoxes) : 0,
+            AvgRevenuePerSession = completedSessions.Any() ? completedSessions.Average(s => s.TotalRevenue) : 0,
+            ScoutBreakdown = scoutBreakdown
+        };
+
+        return View(vm);
     }
 
     private static string EscapeCsv(string? value)
@@ -442,6 +618,7 @@ public class QuickBoothSaleRequest
     public string? Location { get; set; }
     public string? PaymentMethod { get; set; }
     public string? Notes { get; set; }
+    public Guid? GirlScoutId { get; set; }
     public List<BoothSaleItem> Items { get; set; } = new();
 }
 
@@ -456,6 +633,7 @@ public class UpdateBoothSaleRequest
     public Guid OrderId { get; set; }
     public string? PaymentMethod { get; set; }
     public string? Notes { get; set; }
+    public Guid? GirlScoutId { get; set; }
     public List<BoothSaleItem>? Items { get; set; }
 }
 
