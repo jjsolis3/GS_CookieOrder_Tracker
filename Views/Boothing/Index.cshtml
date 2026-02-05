@@ -327,380 +327,417 @@
 
 @section Scripts {
     <script>
-        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
-        var sessionId = @(hasSession ? $"'{Model.ActiveSession!.Id}'" : "null");
-        var currentSaleCount = @Model.Orders.Count;
+        (function() {
+            'use strict';
 
-        // ══════════ SESSION TIMER ══════════
-        var timerEl = document.getElementById('sessionTimer');
-        if (timerEl) {
-            var startTime = new Date(timerEl.dataset.start);
-            function updateTimer() {
-                var now = new Date();
-                var diff = Math.floor((now - startTime) / 1000);
-                var hrs = Math.floor(diff / 3600);
-                var mins = Math.floor((diff % 3600) / 60);
-                timerEl.textContent = (hrs > 0 ? hrs + 'h ' : '') + mins + 'm ago';
-            }
-            updateTimer();
-            setInterval(updateTimer, 30000);
-        }
+            // ══════════ SAFE ELEMENT ACCESS ══════════
+            function $(id) { return document.getElementById(id); }
+            function $$(sel) { return document.querySelectorAll(sel); }
 
-        // ══════════ START SESSION ══════════
-        var startBtn = document.getElementById('startSessionBtn');
-        if (startBtn) {
-            startBtn.addEventListener('click', function () {
-                var loc = document.getElementById('sessionLocation').value.trim();
-                if (!loc) { alert('Please enter a booth location.'); return; }
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = csrfMeta ? csrfMeta.content : '';
+            var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
+            var sessionId = @(hasSession ? $"'{Model.ActiveSession!.Id}'" : "null");
+            var currentSaleCount = @Model.Orders.Count;
+            var cart = {};
 
-                fetch('@Url.Action("StartSession", "Boothing")', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                    body: JSON.stringify({
-                        location: loc,
-                        scoutCount: parseInt(document.getElementById('sessionScoutCount').value) || 1,
-                        notes: document.getElementById('sessionNotes').value || null
-                    })
-                }).then(function (r) {
-                    if (r.ok) location.reload();
-                    else r.json().then(function (d) { alert(d.error || 'Failed to start session.'); });
-                }).catch(function () { alert('Network error. Please try again.'); });
-            });
-        }
-
-        // ══════════ END SESSION ══════════
-        var endBtn = document.getElementById('endSessionBtn');
-        if (endBtn) {
-            endBtn.addEventListener('click', function () {
-                if (!confirm('End this booth session? You can still view the sales from the history.')) return;
-
-                fetch('@Url.Action("EndSession", "Boothing")', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                    body: JSON.stringify({ sessionId: this.dataset.sessionId })
-                }).then(function (r) {
-                    if (r.ok) location.reload();
-                    else r.json().then(function (d) { alert(d.error || 'Failed to end session.'); });
-                }).catch(function () { alert('Network error. Please try again.'); });
-            });
-        }
-
-        // ══════════ PRODUCT CARD SELECTION ══════════
-        var cart = {};
-
-        var grid = document.getElementById('productGrid');
-        if (grid) {
-            grid.addEventListener('click', function (e) {
-                var card = e.target.closest('.product-card');
-                if (!card) return;
-                if (e.target.closest('.qty-minus') || e.target.closest('.qty-plus') || e.target.closest('.qty-input')) return;
-
-                var pid = card.dataset.productId;
-
-                if (card.classList.contains('selected')) {
-                    card.classList.remove('selected');
-                    card.querySelector('.qty-controls').classList.add('d-none');
-                    delete cart[pid];
-                } else {
-                    card.classList.add('selected');
-                    card.querySelector('.qty-controls').classList.remove('d-none');
-                    var qtyInput = card.querySelector('.qty-input');
-                    qtyInput.value = 1;
-                    cart[pid] = {
-                        name: card.dataset.productName,
-                        price: parseFloat(card.dataset.price),
-                        qty: 1
-                    };
+            // ══════════ SESSION TIMER ══════════
+            var timerEl = $('sessionTimer');
+            if (timerEl && timerEl.dataset.start) {
+                var startTime = new Date(timerEl.dataset.start);
+                function updateTimer() {
+                    var now = new Date();
+                    var diff = Math.floor((now - startTime) / 1000);
+                    var hrs = Math.floor(diff / 3600);
+                    var mins = Math.floor((diff % 3600) / 60);
+                    timerEl.textContent = (hrs > 0 ? hrs + 'h ' : '') + mins + 'm ago';
                 }
-                updateCart();
-            });
-
-            grid.addEventListener('click', function (e) {
-                var minusBtn = e.target.closest('.qty-minus');
-                var plusBtn = e.target.closest('.qty-plus');
-                if (!minusBtn && !plusBtn) return;
-
-                var card = e.target.closest('.product-card');
-                var qtyInput = card.querySelector('.qty-input');
-                var val = parseInt(qtyInput.value) || 1;
-
-                if (minusBtn) val = Math.max(1, val - 1);
-                if (plusBtn) val = val + 1;
-
-                qtyInput.value = val;
-                var pid = card.dataset.productId;
-                if (cart[pid]) cart[pid].qty = val;
-                updateCart();
-            });
-
-            grid.addEventListener('input', function (e) {
-                if (!e.target.classList.contains('qty-input')) return;
-                var card = e.target.closest('.product-card');
-                var pid = card.dataset.productId;
-                var val = parseInt(e.target.value) || 1;
-                if (val < 1) { val = 1; e.target.value = 1; }
-                if (cart[pid]) cart[pid].qty = val;
-                updateCart();
-            });
-        }
-
-        function updateCart() {
-            var summary = document.getElementById('cartSummary');
-            var keys = Object.keys(cart);
-            if (keys.length === 0) {
-                if (summary) summary.classList.add('d-none');
-                return;
+                updateTimer();
+                setInterval(updateTimer, 30000);
             }
-            if (summary) summary.classList.remove('d-none');
 
-            var totalBoxes = 0, totalPrice = 0;
-            keys.forEach(function (pid) {
-                totalBoxes += cart[pid].qty;
-                totalPrice += cart[pid].qty * cart[pid].price;
-            });
+            // ══════════ START SESSION ══════════
+            var startBtn = $('startSessionBtn');
+            if (startBtn) {
+                startBtn.addEventListener('click', function () {
+                    var locEl = $('sessionLocation');
+                    var loc = locEl ? locEl.value.trim() : '';
+                    if (!loc) { alert('Please enter a booth location.'); return; }
 
-            document.getElementById('cartItemCount').textContent = keys.length;
-            document.getElementById('cartBoxCount').textContent = totalBoxes;
-            document.getElementById('cartTotal').textContent = '$' + totalPrice.toFixed(2);
-        }
+                    var scoutCountEl = $('sessionScoutCount');
+                    var notesEl = $('sessionNotes');
 
-        var clearBtn = document.getElementById('cartClearBtn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function () {
-                cart = {};
-                document.querySelectorAll('.product-card.selected').forEach(function (c) {
-                    c.classList.remove('selected');
-                    c.querySelector('.qty-controls').classList.add('d-none');
-                });
-                updateCart();
-            });
-        }
-
-        // ══════════ FLASH KPI ANIMATION ══════════
-        function flashKpi(el) {
-            el.classList.remove('kpi-flash');
-            void el.offsetWidth; // trigger reflow
-            el.classList.add('kpi-flash');
-        }
-
-        // ══════════ UPDATE KPIs (real-time) ══════════
-        function updateKpis(kpi) {
-            var saleEl = document.getElementById('kpiSaleCount');
-            var boxEl = document.getElementById('kpiBoxCount');
-            var revEl = document.getElementById('kpiRevenue');
-            if (saleEl) { saleEl.textContent = kpi.saleCount; flashKpi(saleEl); }
-            if (boxEl) { boxEl.textContent = kpi.totalBoxes; flashKpi(boxEl); }
-            if (revEl) { revEl.textContent = '$' + kpi.totalRevenue.toFixed(2); flashKpi(revEl); }
-        }
-
-        // ══════════ ADD SALE ROW TO TABLE ══════════
-        function addSaleRow(sale) {
-            currentSaleCount++;
-            var tbody = document.getElementById('salesTableBody');
-            var emptyMsg = document.getElementById('salesEmpty');
-            var tableWrap = document.getElementById('salesTableWrap');
-
-            if (emptyMsg) emptyMsg.classList.add('d-none');
-            if (tableWrap) tableWrap.classList.remove('d-none');
-
-            if (tbody) {
-                var tr = document.createElement('tr');
-                tr.style.animation = 'fadeIn 0.3s ease';
-                tr.innerHTML =
-                    '<td>' + currentSaleCount + '</td>' +
-                    '<td class="text-nowrap"><small>' + sale.time + '</small></td>' +
-                    '<td style="white-space:normal;word-break:break-word"><small>' + escapeHtml(sale.products) + '</small></td>' +
-                    '<td><small>' + escapeHtml(sale.scoutName || '') + '</small></td>' +
-                    '<td><small>' + escapeHtml(sale.paymentMethod) + '</small></td>' +
-                    '<td class="text-center">' + sale.totalQty + '</td>' +
-                    '<td class="text-end text-nowrap"><strong>$' + sale.totalPrice.toFixed(2) + '</strong></td>' +
-                    '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
-                tbody.insertBefore(tr, tbody.firstChild);
-
-                // Bind edit handler
-                tr.querySelector('.sale-edit-btn').addEventListener('click', function () {
-                    openEditModal(this.dataset.orderId);
+                    fetch('@Url.Action("StartSession", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({
+                            location: loc,
+                            scoutCount: scoutCountEl ? (parseInt(scoutCountEl.value) || 1) : 1,
+                            notes: notesEl ? (notesEl.value || null) : null
+                        })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to start session.'); });
+                    }).catch(function () { alert('Network error. Please try again.'); });
                 });
             }
-        }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            var div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
+            // ══════════ END SESSION ══════════
+            var endBtn = $('endSessionBtn');
+            if (endBtn) {
+                endBtn.addEventListener('click', function () {
+                    if (!confirm('End this booth session? You can still view the sales from the history.')) return;
 
-        // ══════════ SUBMIT SALE ══════════
-        var submitBtn = document.getElementById('cartSubmitBtn');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function () {
-                var items = [];
-                Object.keys(cart).forEach(function (pid) {
-                    if (cart[pid].qty > 0) {
-                        items.push({ productId: pid, qty: cart[pid].qty });
+                    fetch('@Url.Action("EndSession", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({ sessionId: this.dataset.sessionId })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to end session.'); });
+                    }).catch(function () { alert('Network error. Please try again.'); });
+                });
+            }
+
+            // ══════════ PRODUCT CARD GRID ══════════
+            var grid = $('productGrid');
+            if (grid) {
+                // Single unified click handler for the entire grid
+                grid.addEventListener('click', function (e) {
+                    var card = e.target.closest('.product-card');
+                    if (!card) return;
+
+                    var pid = card.dataset.productId;
+                    if (!pid) return;
+
+                    var qtyControls = card.querySelector('.qty-controls');
+                    var qtyInput = card.querySelector('.qty-input');
+
+                    // Check if click was on qty +/- buttons
+                    var minusBtn = e.target.closest('.qty-minus');
+                    var plusBtn = e.target.closest('.qty-plus');
+
+                    if (minusBtn || plusBtn) {
+                        // Handle +/- button clicks
+                        if (!qtyInput) return;
+                        var val = parseInt(qtyInput.value) || 1;
+                        if (minusBtn) val = Math.max(1, val - 1);
+                        if (plusBtn) val = val + 1;
+                        qtyInput.value = val;
+                        if (cart[pid]) cart[pid].qty = val;
+                        updateCart();
+                        return;
                     }
-                });
 
-                if (items.length === 0) { alert('Tap at least one cookie to sell.'); return; }
+                    // Ignore clicks directly on the input field
+                    if (e.target.classList.contains('qty-input')) return;
 
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
-
-                var scoutEl = document.getElementById('boothScout');
-                var girlScoutId = scoutEl && scoutEl.value ? scoutEl.value : null;
-
-                fetch('@Url.Action("QuickAdd", "Boothing")', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                    body: JSON.stringify({
-                        date: selectedDate,
-                        sessionId: sessionId,
-                        paymentMethod: document.getElementById('boothPayment').value,
-                        girlScoutId: girlScoutId,
-                        notes: null,
-                        items: items
-                    })
-                }).then(function (r) {
-                    if (r.ok) {
-                        return r.json().then(function (d) {
-                            // Update KPIs in real-time
-                            if (d.kpi) updateKpis(d.kpi);
-
-                            // Add sale row to table
-                            if (d.sale) addSaleRow(d.sale);
-
-                            // Reset cart and UI
-                            cart = {};
-                            document.querySelectorAll('.product-card.selected').forEach(function (c) {
-                                c.classList.remove('selected');
-                                c.querySelector('.qty-controls').classList.add('d-none');
-                            });
-                            updateCart();
-
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
-                        });
+                    // Toggle card selection
+                    if (card.classList.contains('selected')) {
+                        // Deselect
+                        card.classList.remove('selected');
+                        if (qtyControls) qtyControls.classList.add('d-none');
+                        delete cart[pid];
                     } else {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
-                        r.json().then(function (d) { alert(d.error || 'Failed to record sale.'); });
+                        // Select
+                        card.classList.add('selected');
+                        if (qtyControls) qtyControls.classList.remove('d-none');
+                        if (qtyInput) qtyInput.value = 1;
+                        cart[pid] = {
+                            name: card.dataset.productName || '',
+                            price: parseFloat(card.dataset.price) || 0,
+                            qty: 1
+                        };
                     }
-                }).catch(function () {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
-                    alert('Network error. Please try again.');
+                    updateCart();
                 });
-            });
-        }
 
-        // ══════════ EDIT SALE MODAL ══════════
-        var editOrderId = null;
-        var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { p.Id, p.Name, p.PricePerBox })));
+                // Handle direct input changes in qty field
+                grid.addEventListener('input', function (e) {
+                    if (!e.target.classList.contains('qty-input')) return;
+                    var card = e.target.closest('.product-card');
+                    if (!card) return;
+                    var pid = card.dataset.productId;
+                    var val = parseInt(e.target.value) || 1;
+                    if (val < 1) { val = 1; e.target.value = 1; }
+                    if (cart[pid]) cart[pid].qty = val;
+                    updateCart();
+                });
+            }
 
-        function openEditModal(orderId) {
-            editOrderId = orderId;
+            function updateCart() {
+                var summary = $('cartSummary');
+                var keys = Object.keys(cart);
+                if (keys.length === 0) {
+                    if (summary) summary.classList.add('d-none');
+                    return;
+                }
+                if (summary) summary.classList.remove('d-none');
 
-            fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    document.getElementById('editPayMethod').value = d.paymentMethod || 'Cash';
-                    document.getElementById('editNotes').value = d.notes || '';
+                var totalBoxes = 0, totalPrice = 0;
+                keys.forEach(function (pid) {
+                    totalBoxes += cart[pid].qty;
+                    totalPrice += cart[pid].qty * cart[pid].price;
+                });
 
-                    var editScoutEl = document.getElementById('editScout');
-                    if (editScoutEl) {
-                        editScoutEl.value = d.girlScoutId || '';
-                    }
+                var itemCountEl = $('cartItemCount');
+                var boxCountEl = $('cartBoxCount');
+                var totalEl = $('cartTotal');
+                if (itemCountEl) itemCountEl.textContent = keys.length;
+                if (boxCountEl) boxCountEl.textContent = totalBoxes;
+                if (totalEl) totalEl.textContent = '$' + totalPrice.toFixed(2);
+            }
 
-                    var container = document.getElementById('editLineItems');
-                    container.innerHTML = '';
+            var clearBtn = $('cartClearBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    cart = {};
+                    $$('.product-card.selected').forEach(function (c) {
+                        c.classList.remove('selected');
+                        var qc = c.querySelector('.qty-controls');
+                        if (qc) qc.classList.add('d-none');
+                    });
+                    updateCart();
+                });
+            }
 
-                    d.lineItems.forEach(function (li) {
-                        var row = document.createElement('div');
-                        row.className = 'row align-items-center mb-2 edit-line';
-                        row.innerHTML =
-                            '<div class="col-6"><select class="form-select form-select-sm edit-product">' +
-                            productData.map(function (p) {
-                                var sel = p.id === li.productId ? ' selected' : '';
-                                return '<option value="' + p.id + '" data-price="' + p.pricePerBox + '"' + sel + '>' + p.name + ' ($' + p.pricePerBox.toFixed(2) + ')</option>';
-                            }).join('') +
-                            '</select></div>' +
-                            '<div class="col-3"><input type="number" min="1" value="' + li.quantityBoxes + '" class="form-control form-control-sm edit-qty" /></div>' +
-                            '<div class="col-3 text-end"><strong class="edit-line-total">$' + li.lineTotal.toFixed(2) + '</strong></div>';
-                        container.appendChild(row);
+            // ══════════ FLASH KPI ANIMATION ══════════
+            function flashKpi(el) {
+                if (!el) return;
+                el.classList.remove('kpi-flash');
+                void el.offsetWidth;
+                el.classList.add('kpi-flash');
+            }
+
+            function updateKpis(kpi) {
+                var saleEl = $('kpiSaleCount');
+                var boxEl = $('kpiBoxCount');
+                var revEl = $('kpiRevenue');
+                if (saleEl) { saleEl.textContent = kpi.saleCount; flashKpi(saleEl); }
+                if (boxEl) { boxEl.textContent = kpi.totalBoxes; flashKpi(boxEl); }
+                if (revEl) { revEl.textContent = '$' + kpi.totalRevenue.toFixed(2); flashKpi(revEl); }
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                var div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            function addSaleRow(sale) {
+                currentSaleCount++;
+                var tbody = $('salesTableBody');
+                var emptyMsg = $('salesEmpty');
+                var tableWrap = $('salesTableWrap');
+
+                if (emptyMsg) emptyMsg.classList.add('d-none');
+                if (tableWrap) tableWrap.classList.remove('d-none');
+
+                if (tbody) {
+                    var tr = document.createElement('tr');
+                    tr.style.animation = 'fadeIn 0.3s ease';
+                    tr.innerHTML =
+                        '<td>' + currentSaleCount + '</td>' +
+                        '<td class="text-nowrap"><small>' + escapeHtml(sale.time) + '</small></td>' +
+                        '<td style="white-space:normal;word-break:break-word"><small>' + escapeHtml(sale.products) + '</small></td>' +
+                        '<td><small>' + escapeHtml(sale.scoutName || '') + '</small></td>' +
+                        '<td><small>' + escapeHtml(sale.paymentMethod) + '</small></td>' +
+                        '<td class="text-center">' + sale.totalQty + '</td>' +
+                        '<td class="text-end text-nowrap"><strong>$' + sale.totalPrice.toFixed(2) + '</strong></td>' +
+                        '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
+                    tbody.insertBefore(tr, tbody.firstChild);
+                }
+            }
+
+            // ══════════ SUBMIT SALE ══════════
+            var submitBtn = $('cartSubmitBtn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function () {
+                    var items = [];
+                    Object.keys(cart).forEach(function (pid) {
+                        if (cart[pid].qty > 0) {
+                            items.push({ productId: pid, qty: cart[pid].qty });
+                        }
                     });
 
-                    recalcEditTotal();
-                    var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editSaleModal'));
-                    modal.show();
-                }).catch(function () { alert('Failed to load sale details.'); });
-        }
+                    if (items.length === 0) { alert('Tap at least one cookie to sell.'); return; }
 
-        // Bind existing edit buttons
-        document.querySelectorAll('.sale-edit-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                openEditModal(this.dataset.orderId);
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
+
+                    var scoutEl = $('boothScout');
+                    var girlScoutId = scoutEl && scoutEl.value ? scoutEl.value : null;
+                    var paymentEl = $('boothPayment');
+
+                    fetch('@Url.Action("QuickAdd", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({
+                            date: selectedDate,
+                            sessionId: sessionId,
+                            paymentMethod: paymentEl ? paymentEl.value : 'Cash',
+                            girlScoutId: girlScoutId,
+                            notes: null,
+                            items: items
+                        })
+                    }).then(function (r) {
+                        if (r.ok) {
+                            return r.json().then(function (d) {
+                                if (d.kpi) updateKpis(d.kpi);
+                                if (d.sale) addSaleRow(d.sale);
+
+                                cart = {};
+                                $$('.product-card.selected').forEach(function (c) {
+                                    c.classList.remove('selected');
+                                    var qc = c.querySelector('.qty-controls');
+                                    if (qc) qc.classList.add('d-none');
+                                });
+                                updateCart();
+
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
+                            });
+                        } else {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
+                            r.json().then(function (d) { alert(d.error || 'Failed to record sale.'); });
+                        }
+                    }).catch(function () {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
+                        alert('Network error. Please try again.');
+                    });
+                });
+            }
+
+            // ══════════ EDIT SALE MODAL ══════════
+            var editOrderId = null;
+            var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { p.Id, p.Name, p.PricePerBox })));
+
+            function openEditModal(orderId) {
+                editOrderId = orderId;
+
+                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        var payMethodEl = $('editPayMethod');
+                        var notesEl = $('editNotes');
+                        var scoutEl = $('editScout');
+                        var container = $('editLineItems');
+
+                        if (payMethodEl) payMethodEl.value = d.paymentMethod || 'Cash';
+                        if (notesEl) notesEl.value = d.notes || '';
+                        if (scoutEl) scoutEl.value = d.girlScoutId || '';
+
+                        if (container) {
+                            container.innerHTML = '';
+                            d.lineItems.forEach(function (li) {
+                                var row = document.createElement('div');
+                                row.className = 'row align-items-center mb-2 edit-line';
+                                row.innerHTML =
+                                    '<div class="col-6"><select class="form-select form-select-sm edit-product">' +
+                                    productData.map(function (p) {
+                                        var sel = p.id === li.productId ? ' selected' : '';
+                                        return '<option value="' + p.id + '" data-price="' + p.pricePerBox + '"' + sel + '>' + p.name + ' ($' + p.pricePerBox.toFixed(2) + ')</option>';
+                                    }).join('') +
+                                    '</select></div>' +
+                                    '<div class="col-3"><input type="number" min="1" value="' + li.quantityBoxes + '" class="form-control form-control-sm edit-qty" /></div>' +
+                                    '<div class="col-3 text-end"><strong class="edit-line-total">$' + li.lineTotal.toFixed(2) + '</strong></div>';
+                                container.appendChild(row);
+                            });
+                        }
+
+                        recalcEditTotal();
+                        var modalEl = $('editSaleModal');
+                        if (modalEl) {
+                            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                            modal.show();
+                        }
+                    }).catch(function () { alert('Failed to load sale details.'); });
+            }
+
+            function recalcEditTotal() {
+                var total = 0;
+                $$('.edit-line').forEach(function (row) {
+                    var sel = row.querySelector('.edit-product');
+                    var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                    var opt = sel ? sel.options[sel.selectedIndex] : null;
+                    var price = opt ? (parseFloat(opt.dataset.price) || 0) : 0;
+                    var lineTotal = qty * price;
+                    var ltEl = row.querySelector('.edit-line-total');
+                    if (ltEl) ltEl.textContent = '$' + lineTotal.toFixed(2);
+                    total += lineTotal;
+                });
+                var totalEl = $('editTotal');
+                if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+            }
+
+            // Use event delegation for edit buttons (works for dynamically added rows)
+            document.addEventListener('click', function(e) {
+                var editBtn = e.target.closest('.sale-edit-btn');
+                if (editBtn && editBtn.dataset.orderId) {
+                    openEditModal(editBtn.dataset.orderId);
+                }
             });
-        });
 
-        document.getElementById('editLineItems').addEventListener('change', recalcEditTotal);
-        document.getElementById('editLineItems').addEventListener('input', recalcEditTotal);
+            var editLineItems = $('editLineItems');
+            if (editLineItems) {
+                editLineItems.addEventListener('change', recalcEditTotal);
+                editLineItems.addEventListener('input', recalcEditTotal);
+            }
 
-        function recalcEditTotal() {
-            var total = 0;
-            document.querySelectorAll('.edit-line').forEach(function (row) {
-                var sel = row.querySelector('.edit-product');
-                var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
-                var price = parseFloat(sel.options[sel.selectedIndex]?.dataset?.price) || 0;
-                var lineTotal = qty * price;
-                row.querySelector('.edit-line-total').textContent = '$' + lineTotal.toFixed(2);
-                total += lineTotal;
-            });
-            document.getElementById('editTotal').textContent = '$' + total.toFixed(2);
-        }
+            var editSaveBtn = $('editSaveBtn');
+            if (editSaveBtn) {
+                editSaveBtn.addEventListener('click', function () {
+                    if (!editOrderId) return;
 
-        document.getElementById('editSaveBtn').addEventListener('click', function () {
-            if (!editOrderId) return;
+                    var items = [];
+                    $$('.edit-line').forEach(function (row) {
+                        var pid = row.querySelector('.edit-product').value;
+                        var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                        if (pid && qty > 0) items.push({ productId: pid, qty: qty });
+                    });
 
-            var items = [];
-            document.querySelectorAll('.edit-line').forEach(function (row) {
-                var pid = row.querySelector('.edit-product').value;
-                var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
-                if (pid && qty > 0) items.push({ productId: pid, qty: qty });
-            });
+                    var scoutEl = $('editScout');
+                    var girlScoutId = scoutEl && scoutEl.value ? scoutEl.value : null;
+                    var payMethodEl = $('editPayMethod');
+                    var notesEl = $('editNotes');
 
-            var editScoutEl = document.getElementById('editScout');
-            var girlScoutId = editScoutEl && editScoutEl.value ? editScoutEl.value : null;
+                    fetch('@Url.Action("UpdateSale", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({
+                            orderId: editOrderId,
+                            paymentMethod: payMethodEl ? payMethodEl.value : 'Cash',
+                            notes: notesEl ? (notesEl.value || null) : null,
+                            girlScoutId: girlScoutId,
+                            items: items
+                        })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+                    }).catch(function () { alert('Network error.'); });
+                });
+            }
 
-            fetch('@Url.Action("UpdateSale", "Boothing")', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                body: JSON.stringify({
-                    orderId: editOrderId,
-                    paymentMethod: document.getElementById('editPayMethod').value,
-                    notes: document.getElementById('editNotes').value || null,
-                    girlScoutId: girlScoutId,
-                    items: items
-                })
-            }).then(function (r) {
-                if (r.ok) location.reload();
-                else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
-            }).catch(function () { alert('Network error.'); });
-        });
+            var editDeleteBtn = $('editDeleteBtn');
+            if (editDeleteBtn) {
+                editDeleteBtn.addEventListener('click', function () {
+                    if (!editOrderId) return;
+                    if (!confirm('Delete this sale? This cannot be undone.')) return;
 
-        document.getElementById('editDeleteBtn').addEventListener('click', function () {
-            if (!editOrderId) return;
-            if (!confirm('Delete this sale? This cannot be undone.')) return;
+                    fetch('@Url.Action("DeleteSale", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({ orderId: editOrderId })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
+                    }).catch(function () { alert('Network error.'); });
+                });
+            }
 
-            fetch('@Url.Action("DeleteSale", "Boothing")', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                body: JSON.stringify({ orderId: editOrderId })
-            }).then(function (r) {
-                if (r.ok) location.reload();
-                else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
-            }).catch(function () { alert('Network error.'); });
-        });
+        })();
     </script>
 }

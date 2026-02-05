@@ -18,14 +18,10 @@ public class InventoryController : Controller
         _dbContext = dbContext;
     }
 
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
-        var batches = await _dbContext.InventoryBatches
-            .Include(batch => batch.GirlScout)
-            .OrderByDescending(batch => batch.PickupDate)
-            .ToListAsync();
-
-        return View(batches);
+        // Redirect to the combined Stock page
+        return RedirectToAction(nameof(Stock));
     }
 
     [HttpGet]
@@ -178,13 +174,20 @@ public class InventoryController : Controller
             };
         }).OrderBy(p => p.ProductName).ToList();
 
+        // Load inventory batches for the combined view
+        var batches = await _dbContext.InventoryBatches
+            .Include(batch => batch.GirlScout)
+            .OrderByDescending(batch => batch.PickupDate)
+            .ToListAsync();
+
         var vm = new InventoryStockViewModel
         {
             Products = products,
             TotalBoxesReceived = products.Sum(p => p.BoxesReceived),
             TotalBoxesSold = products.Sum(p => p.BoxesSoldPersonal + p.BoxesSoldTroop),
             TotalBoxesReturned = products.Sum(p => p.BoxesReturned),
-            TotalBoxesOnHand = products.Sum(p => p.BoxesOnHand)
+            TotalBoxesOnHand = products.Sum(p => p.BoxesOnHand),
+            Batches = batches
         };
 
         return View(vm);

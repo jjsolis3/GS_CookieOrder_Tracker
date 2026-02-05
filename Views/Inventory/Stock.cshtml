@@ -1,7 +1,7 @@
 @model GS_CookieOrder_Tracker.Models.InventoryStockViewModel
 
 @{
-    ViewData["Title"] = "Inventory Stock";
+    ViewData["Title"] = "Inventory";
 }
 
 <!-- INVENTORY KPI's -->
@@ -60,19 +60,18 @@
     </div>
 </div>
 
+<!-- STOCK BY PRODUCT TABLE -->
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title">Stock by Product</h4>      
-                <div class="justify-content-evenly align-content-center">
-                    <!-- Add Inventory Button -->
-                    <a class="btn btn-warning btn-sm" asp-action="Create">
-                        <i class="fa fa-truck text-success me-1"></i> Add Product
+                <h4 class="card-title">Stock by Product</h4>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary btn-sm" asp-action="Create">
+                        <i class="fa fa-plus me-1"></i> Add Receipt
                     </a>
-                    <!-- Returns Inventory Button -->
-                    <a class="btn btn-warning btn-sm" asp-action="Return">
-                        <i class="fa fa-undo text-danger me-1"></i> Return Product
+                    <a class="btn btn-outline-warning btn-sm" asp-action="Return">
+                        <i class="fa fa-undo me-1"></i> Return Product
                     </a>
                 </div>
             </div>
@@ -129,3 +128,243 @@
         </div>
     </div>
 </div>
+
+<!-- INVENTORY BATCHES (RECEIPTS) TABLE -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title">Inventory Receipts</h4>
+                <a class="btn btn-primary btn-sm" asp-action="Create">
+                    <i class="fa fa-plus me-1"></i> New Receipt
+                </a>
+            </div>
+            <div class="card-body">
+                @if (!Model.Batches.Any())
+                {
+                    <p class="text-muted text-center py-4">No inventory batches recorded yet.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-responsive-md table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Pickup Date</th>
+                                    <th>Status</th>
+                                    <th>Type</th>
+                                    <th>Girl Scout</th>
+                                    <th class="text-end">Total Boxes</th>
+                                    <th class="text-end">Total Cases</th>
+                                    <th style="width:50px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var batch in Model.Batches)
+                                {
+                                    var batchStatusClass = batch.Status?.ToLower() switch
+                                    {
+                                        "received" => "badge-success",
+                                        "pending pickup" => "badge-warning",
+                                        "in transit" => "badge-info",
+                                        "complete" => "badge-primary",
+                                        "returned" => "badge-secondary",
+                                        _ => "badge-secondary"
+                                    };
+                                    <tr>
+                                        <td>@(batch.PickupDate?.ToString("MMM d, yyyy") ?? "N/A")</td>
+                                        <td><span class="badge light @batchStatusClass">@batch.Status</span></td>
+                                        <td>@batch.BatchType</td>
+                                        <td>@(batch.GirlScout == null ? "Unassigned" : $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}")</td>
+                                        <td class="text-end"><strong>@batch.TotalBoxes</strong></td>
+                                        <td class="text-end">@batch.TotalCases</td>
+                                        <td>
+                                            <button type="button" class="btn btn-xs btn-outline-primary batch-detail-btn" data-batch-id="@batch.Id" title="View Details">
+                                                <i class="fa fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ BATCH DETAIL / EDIT MODAL ═══════════ -->
+<div class="modal fade" id="batchDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Batch Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Status</label>
+                        <select id="mdlBatchStatus" class="form-select form-select-sm">
+                            <option value="Received">Received</option>
+                            <option value="Pending Pickup">Pending Pickup</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Complete">Complete</option>
+                            <option value="Returned">Returned</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Type</label>
+                        <select id="mdlBatchType" class="form-select form-select-sm">
+                            <option value="Initial Order">Initial Order</option>
+                            <option value="Restock">Restock</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Distribution">Distribution</option>
+                            <option value="Donation">Donation</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Pickup Date</label>
+                        <input type="date" id="mdlBatchPickupDate" class="form-control form-control-sm" />
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Girl Scout</label>
+                        <p id="mdlBatchGirlScout" class="mb-0"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Notes</label>
+                        <input type="text" id="mdlBatchNotes" class="form-control form-control-sm" />
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Total Boxes</label>
+                        <p id="mdlBatchTotalBoxes" class="mb-0 fs-5 text-primary fw-bold"></p>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Total Cases</label>
+                        <p id="mdlBatchTotalCases" class="mb-0 fs-5"></p>
+                    </div>
+                </div>
+
+                <hr>
+                <h6 class="mb-2">Products Received</h6>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end">Boxes</th>
+                            <th class="text-end">Cases</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mdlBatchReceipts"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="mdlBatchDeleteBtn">
+                    <i class="fa fa-trash me-1"></i> Delete
+                </button>
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="mdlBatchSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            'use strict';
+
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = csrfMeta ? csrfMeta.content : '';
+            var currentBatchId = null;
+
+            document.querySelectorAll('.batch-detail-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    currentBatchId = this.dataset.batchId;
+                    fetch('@Url.Action("GetBatchDetail", "Inventory")?id=' + currentBatchId)
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) {
+                            var statusEl = document.getElementById('mdlBatchStatus');
+                            var typeEl = document.getElementById('mdlBatchType');
+                            var dateEl = document.getElementById('mdlBatchPickupDate');
+                            var notesEl = document.getElementById('mdlBatchNotes');
+                            var scoutEl = document.getElementById('mdlBatchGirlScout');
+                            var boxesEl = document.getElementById('mdlBatchTotalBoxes');
+                            var casesEl = document.getElementById('mdlBatchTotalCases');
+
+                            if (statusEl) statusEl.value = d.status || 'Received';
+                            if (typeEl) typeEl.value = d.batchType || 'Initial Order';
+                            if (dateEl) dateEl.value = d.pickupDate || '';
+                            if (notesEl) notesEl.value = d.notes || '';
+                            if (scoutEl) scoutEl.textContent = d.girlScoutName || 'Unassigned';
+                            if (boxesEl) boxesEl.textContent = d.totalBoxes;
+                            if (casesEl) casesEl.textContent = d.totalCases;
+
+                            var tbody = document.getElementById('mdlBatchReceipts');
+                            if (tbody) {
+                                tbody.innerHTML = '';
+                                d.receipts.forEach(function (r) {
+                                    var tr = document.createElement('tr');
+                                    tr.innerHTML = '<td>' + r.productName + '</td><td class="text-end">' + r.quantityBoxes + '</td><td class="text-end">' + r.quantityCases + '</td>';
+                                    tbody.appendChild(tr);
+                                });
+                            }
+
+                            var modalEl = document.getElementById('batchDetailModal');
+                            if (modalEl) {
+                                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                                modal.show();
+                            }
+                        }).catch(function() { alert('Failed to load batch details.'); });
+                });
+            });
+
+            var saveBtn = document.getElementById('mdlBatchSaveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    var statusEl = document.getElementById('mdlBatchStatus');
+                    var typeEl = document.getElementById('mdlBatchType');
+                    var dateEl = document.getElementById('mdlBatchPickupDate');
+                    var notesEl = document.getElementById('mdlBatchNotes');
+
+                    fetch('@Url.Action("UpdateBatch", "Inventory")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({
+                            batchId: currentBatchId,
+                            status: statusEl ? statusEl.value : null,
+                            batchType: typeEl ? typeEl.value : null,
+                            pickupDate: dateEl ? (dateEl.value || null) : null,
+                            notes: notesEl ? (notesEl.value || null) : null
+                        })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+                    }).catch(function() { alert('Network error.'); });
+                });
+            }
+
+            var deleteBtn = document.getElementById('mdlBatchDeleteBtn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function () {
+                    if (!confirm('Delete this batch and all its receipts? This cannot be undone.')) return;
+                    fetch('@Url.Action("DeleteBatch", "Inventory")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({ batchId: currentBatchId })
+                    }).then(function (r) {
+                        if (r.ok) location.reload();
+                        else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
+                    }).catch(function() { alert('Network error.'); });
+                });
+            }
+        })();
+    </script>
+}
