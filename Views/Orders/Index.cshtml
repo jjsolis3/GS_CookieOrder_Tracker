@@ -183,7 +183,7 @@
                                     <tr data-order-id="@order.Id">
                                         <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
                                         <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
-                                        <td style="white-space:normal;word-break:break-word">@order.Customer?.Name</td>
+                                        <td style="white-space:normal;word-break:break-word">@(order.Customer?.Name ?? "-")</td>
                                         <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
                                         <td>
                                             <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:110px;font-size:.75rem;padding:2px 4px">

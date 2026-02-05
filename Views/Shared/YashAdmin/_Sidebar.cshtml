@@ -1,4 +1,4 @@
-<!--**********************************
+﻿<!--**********************************
     Sidebar start
 ***********************************-->
 <div class="deznav">
@@ -15,41 +15,11 @@
                     <span class="nav-text">Dashboard</span>
                 </a>
             </li>
-            <li class="menu-title">MANAGE</li>
+
+            <!-- SALES -->
+            <li class="menu-title">SALES</li>
             <li>
-                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
-                    <div class="menu-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5">
-                                <path d="M21 5C19.89 4.65 18.67 4.5 17.5 4.5C15.55 4.5 13.45 4.9 12 6C10.55 4.9 8.45 4.5 6.5 4.5C4.55 4.5 2.45 4.9 1 6V20.65C1 20.9 1.25 21.15 1.5 21.15C1.6 21.15 1.65 21.1 1.75 21.1C3.1 20.45 5.05 20 6.5 20C8.45 20 10.55 20.4 12 21.5C13.35 20.65 15.8 20 17.5 20C19.15 20 20.85 20.3 22.25 21.05C22.35 21.1 22.4 21.1 22.5 21.1C22.75 21.1 23 20.85 23 20.6V6C22.4 5.55 21.75 5.25 21 5ZM21 18.5C19.9 18.15 18.7 18 17.5 18C15.8 18 13.35 18.65 12 19.5V8C13.35 7.15 15.8 6.5 17.5 6.5C18.7 6.5 19.9 6.65 21 7V18.5Z" fill="white" />
-                            </g>
-                        </svg>
-                    </div>
-                    <span class="nav-text">Products</span>
-                </a>
-                <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Index", "Products")">All Products</a></li>
-                    <li><a href="@Url.Action("Create", "Products")">Add Product</a></li>
-                </ul>
-            </li>
-            <li>
-                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
-                    <div class="menu-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5">
-                                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="white"/>
-                            </g>
-                        </svg>
-                    </div>
-                    <span class="nav-text">Girl Scouts</span>
-                </a>
-                <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Index", "GirlScouts")">All Scouts</a></li>
-                    <li><a href="@Url.Action("Create", "GirlScouts")">Add Scout</a></li>
-                </ul>
-            </li>
-            <li>
-                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
+                <a href="@Url.Action("Index", "Orders")" aria-expanded="false">
                     <div class="menu-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g opacity="0.5">
@@ -60,27 +30,26 @@
                     </div>
                     <span class="nav-text">Orders</span>
                 </a>
-                <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Index", "Orders")">All Orders</a></li>
-                    <li><a href="@Url.Action("Create", "Orders")">New Order</a></li>
-                </ul>
             </li>
             <li>
                 <a href="@Url.Action("Index", "Boothing")" class="" aria-expanded="false">
                     <div class="menu-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g opacity="0.5">
-                                <path d="M4 4H20V6H4V4ZM4 8H20V10H4V8Z" fill="white"/>
-                                <path opacity="0.4" d="M2 12H22V20C22 21.1 21.1 22 20 22H4C2.9 22 2 21.1 2 20V12Z" fill="white"/>
-                                <path d="M8 14H16V16H8V14Z" fill="white"/>
+                                <path d="M4 4H20V6H4V4ZM4 8H20V10H4V8Z" fill="white" />
+                                <path opacity="0.4" d="M2 12H22V20C22 21.1 21.1 22 20 22H4C2.9 22 2 21.1 2 20V12Z" fill="white" />
+                                <path d="M8 14H16V16H8V14Z" fill="white" />
                             </g>
                         </svg>
                     </div>
                     <span class="nav-text">Booth Sales</span>
                 </a>
             </li>
+
+            <!-- INVENTORY -->
+            <li class="menu-title">INVENTORY</li>
             <li>
-                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
+                <a href="@Url.Action("Stock", "Inventory")" aria-expanded="false">
                     <div class="menu-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g opacity="0.5">
@@ -90,17 +59,40 @@
                             </g>
                         </svg>
                     </div>
-                    <span class="nav-text">Inventory</span>
+                    <span class="nav-text">Cookie Stock</span>
                 </a>
-                <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Stock", "Inventory")">Stock Levels</a></li>
-                    <li><a href="@Url.Action("Index", "Inventory")">All Batches</a></li>
-                    <li><a href="@Url.Action("Create", "Inventory")">New Receipt</a></li>
-                    <li><a href="@Url.Action("Return", "Inventory")">Return Product</a></li>
-                </ul>
             </li>
             <li>
-                <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
+                <a href="@Url.Action("Create", "Inventory")" aria-expanded="false">
+                    <div class="menu-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g opacity="0.5">
+                                <path d="M21 5C19.89 4.65 18.67 4.5 17.5 4.5C15.55 4.5 13.45 4.9 12 6C10.55 4.9 8.45 4.5 6.5 4.5C4.55 4.5 2.45 4.9 1 6V20.65C1 20.9 1.25 21.15 1.5 21.15C1.6 21.15 1.65 21.1 1.75 21.1C3.1 20.45 5.05 20 6.5 20C8.45 20 10.55 20.4 12 21.5C13.35 20.65 15.8 20 17.5 20C19.15 20 20.85 20.3 22.25 21.05C22.35 21.1 22.4 21.1 22.5 21.1C22.75 21.1 23 20.85 23 20.6V6C22.4 5.55 21.75 5.25 21 5ZM21 18.5C19.9 18.15 18.7 18 17.5 18C15.8 18 13.35 18.65 12 19.5V8C13.35 7.15 15.8 6.5 17.5 6.5C18.7 6.5 19.9 6.65 21 7V18.5Z" fill="white" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Add</span>
+                </a>
+            </li>
+            <li>
+                <a href="@Url.Action("Return", "Inventory")" aria-expanded="false">
+                    <div class="menu-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g opacity="0.5">
+                                <path opacity="0.4" d="M2.00018 11.0785C2.05018 13.4165 2.19018 17.4155 2.21018 17.8565C2.28118 18.7995 2.64218 19.7525 3.20418 20.4245C3.98618 21.3675 4.94918 21.7885 6.29218 21.7885C8.14818 21.7985 10.1942 21.7985 12.1812 21.7985C14.1762 21.7985 16.1122 21.7985 17.7472 21.7885C19.0712 21.7885 20.0642 21.3565 20.8362 20.4245C21.3982 19.7525 21.7592 18.7895 21.8102 17.8565C21.8302 17.4855 21.9302 13.1445 21.9902 11.0785H2.00018Z" fill="white" />
+                                <path d="M11.2454 15.3842V16.6782C11.2454 17.0922 11.5814 17.4282 11.9954 17.4282C12.4094 17.4282 12.7454 17.0922 12.7454 16.6782V15.3842C12.7454 14.9702 12.4094 14.6342 11.9954 14.6342C11.5814 14.6342 11.2454 14.9702 11.2454 15.3842Z" fill="white" />
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.2113 14.5564C10.1113 14.9194 9.7623 15.1514 9.38431 15.1014C6.8333 14.7454 4.39531 13.8404 2.33731 12.4814C2.12631 12.3434 2.00031 12.1074 2.00031 11.8554V8.3894C2.00031 6.2894 3.71231 4.5814 5.81731 4.5814H7.78431C7.97231 3.1294 9.20231 2.0004 10.7043 2.0004H13.2863C14.7873 2.0004 16.0183 3.1294 16.2063 4.5814H18.1833C20.2823 4.5814 21.9903 6.2894 21.9903 8.3894V11.8554C21.9903 12.1074 21.8633 12.3424 21.6543 12.4814C19.5923 13.8464 17.1443 14.7554 14.5763 15.1104C14.5413 15.1154 14.5073 15.1174 14.4733 15.1174C14.1343 15.1174 13.8313 14.8884 13.7463 14.5524C13.5443 13.7564 12.8213 13.1994 11.9903 13.1994C11.1483 13.1994 10.4333 13.7444 10.2113 14.5564ZM13.2863 3.5004H10.7043C10.0313 3.5004 9.46931 3.9604 9.30131 4.5814H14.6883C14.5203 3.9604 13.9583 3.5004 13.2863 3.5004Z" fill="white" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Returns</span>
+                </a>
+            </li>
+
+            <!-- FINANCE -->
+            <li class="menu-title">FINANCE</li>
+            <li>
+                <a href="@Url.Action("Index", "Paybacks")" aria-expanded="false">
                     <div class="menu-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g opacity="0.5">
@@ -109,55 +101,54 @@
                             </g>
                         </svg>
                     </div>
-                    <span class="nav-text">Paybacks</span>
+                    <span class="nav-text">Payback</span>
                 </a>
-                <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Index", "Paybacks")">Payback Report</a></li>
-                    <li><a href="@Url.Action("Create", "Paybacks")">Record Payment</a></li>
-                </ul>
+                
             </li>
-            <li class="menu-title">ADMIN</li>
+
+            <!-- MANAGE -->
             <li>
                 <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
                     <div class="menu-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g opacity="0.5">
-                                <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" fill="none"/>
-                                <path d="M23 21V19C22.9986 18.1137 22.7005 17.2528 22.1523 16.5523C21.6041 15.8519 20.8371 15.3516 19.98 15.13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                <path d="M16 3.13C16.8604 3.35031 17.6308 3.85071 18.1813 4.55232C18.7318 5.25392 19.0301 6.11683 19.0301 7.005C19.0301 7.89318 18.7318 8.75608 18.1813 9.45769C17.6308 10.1593 16.8604 10.6597 16 10.88" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <path d="M12 1L3 5V11C3 17.55 6.84 23.74 12 25C17.16 23.74 21 17.55 21 11V5L12 1Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="scale(0.92) translate(1,0)" />
                             </g>
                         </svg>
                     </div>
-                    <span class="nav-text">Users</span>
+                    <span class="nav-text">MANAGE</span>
                 </a>
                 <ul aria-expanded="false">
-                    <li><a href="@Url.Action("Index", "Users")">All Users</a></li>
-                    <li><a href="@Url.Action("Invite", "Users")">Invite User</a></li>
+                    <li><a href="@Url.Action("Index", "Products")">Products</a></li>
+                    <li><a href="@Url.Action("Index", "GirlScouts")">Girl Scouts</a></li>
+                    <li><a href="@Url.Action("Index", "Users")">Users</a></li>
                 </ul>
             </li>
-            <li class="menu-title">ACCOUNT</li>
-            <li>
-                @if (User.Identity?.IsAuthenticated ?? false)
-                {
-                    <a href="javascript:void(0);" class="" aria-expanded="false" onclick="document.getElementById('sidebar-logout-form').submit();">
-                        <div class="menu-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <g opacity="0.5">
-                                    <path d="M15 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                    <path d="M10 17L15 12L10 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                    <path d="M15 12H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                </g>
-                            </svg>
-                        </div>
-                        <span class="nav-text">Logout</span>
-                    </a>
-                    <form id="sidebar-logout-form" asp-controller="Account" asp-action="Logout" method="post" style="display:none;">
-                        @Html.AntiForgeryToken()
-                    </form>
-                }
-                else
-                {
+            
+
+            
+            @if (User.Identity?.IsAuthenticated ?? false)
+            {
+                @* <a href="javascript:void(0);" class="" aria-expanded="false" onclick="document.getElementById('sidebar-logout-form').submit();">
+                    <div class="menu-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g opacity="0.5">
+                                <path d="M15 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <path d="M10 17L15 12L10 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <path d="M15 12H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Logout</span>
+                </a>
+                <form id="sidebar-logout-form" asp-controller="Account" asp-action="Logout" method="post" style="display:none;">
+                    @Html.AntiForgeryToken()
+                </form> *@
+            }
+            else
+            {
+                <li class="menu-title">ACCOUNT</li>
+                <li>
                     <a href="@Url.Action("Login", "Account")" class="" aria-expanded="false">
                         <div class="menu-icon">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -170,23 +161,15 @@
                         </div>
                         <span class="nav-text">Login</span>
                     </a>
-                }
-            </li>
-            <li>
-                <a href="@Url.Action("Privacy", "Home")" class="" aria-expanded="false">
-                    <div class="menu-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5">
-                                <path d="M12 1L3 5V11C3 17.55 6.84 23.74 12 25C17.16 23.74 21 17.55 21 11V5L12 1Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="scale(0.92) translate(1,0)"/>
-                            </g>
-                        </svg>
-                    </div>
-                    <span class="nav-text">Privacy</span>
-                </a>
-            </li>
+                </li>
+            }
         </ul>
         <div class="copyright">
-            <p>GS Cookie Order Tracker <span class="current-year">2026</span> All Rights Reserved</p>
+            <p>Cookie Tracker <span class="current-year">2026</span></br>
+            All Rights Reserved</p>
+        </div>
+        <div class="copyright">
+            <p>🍪 Crafted by 774EntFX 🍪</p>
         </div>
     </div>
 </div>
