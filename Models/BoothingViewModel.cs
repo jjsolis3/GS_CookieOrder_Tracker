@@ -12,11 +12,34 @@ public class BoothingViewModel
     public decimal TotalRevenue { get; set; }
     public decimal TotalCollected { get; set; }
 
-    // Quick-add form data
+    // Active booth session (null if none)
+    public BoothSessionInfo? ActiveSession { get; set; }
+
+    // Product cards with images for the mobile-friendly grid
+    public List<ProductCard> ProductCards { get; set; } = new();
+
+    // Quick-add form data (legacy dropdown fallback)
     public List<SelectListItem> Products { get; set; } = new();
     public Dictionary<string, decimal> ProductPrices { get; set; } = new();
     public List<SelectListItem> PaymentMethods { get; set; } = new();
 
     // Booth location suggestions (recent locations used)
     public List<string> RecentLocations { get; set; } = new();
+}
+
+public class BoothSessionInfo
+{
+    public Guid Id { get; set; }
+    public string Location { get; set; } = "";
+    public DateTime StartedAt { get; set; }
+    public int ScoutCount { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class ProductCard
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal PricePerBox { get; set; }
+    public string? ImagePath { get; set; }
 }

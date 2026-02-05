@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<InventoryBatch> InventoryBatches => Set<InventoryBatch>();
     public DbSet<InventoryReceipt> InventoryReceipts => Set<InventoryReceipt>();
     public DbSet<InventoryReturn> InventoryReturns => Set<InventoryReturn>();
+    public DbSet<BoothSession> BoothSessions => Set<BoothSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,5 +70,10 @@ public class AppDbContext : DbContext
             .HasOne(ret => ret.Product)
             .WithMany(product => product.InventoryReturns)
             .HasForeignKey(ret => ret.ProductId);
+
+        modelBuilder.Entity<Order>()
+            .HasOne(order => order.BoothSession)
+            .WithMany(session => session.Orders)
+            .HasForeignKey(order => order.BoothSessionId);
     }
 }

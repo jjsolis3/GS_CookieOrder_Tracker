@@ -2,127 +2,25 @@
 
 @{
     ViewData["Title"] = "Booth Sales";
-
-    // Helper to extract location from notes
-    string ExtractLocation(string? notes)
-    {
-        if (string.IsNullOrEmpty(notes) || !notes.StartsWith("[Location: ")) return "";
-        var endIdx = notes.IndexOf(']', 11);
-        if (endIdx < 0) return "";
-        return notes.Substring(11, endIdx - 11);
-    }
-
-    string ExtractNotes(string? notes)
-    {
-        if (string.IsNullOrEmpty(notes)) return "";
-        if (!notes.StartsWith("[Location: ")) return notes;
-        var endIdx = notes.IndexOf(']');
-        if (endIdx < 0 || endIdx + 1 >= notes.Length) return "";
-        return notes.Substring(endIdx + 1).Trim();
-    }
+    var hasSession = Model.ActiveSession != null;
 }
 
-<!-- ═══════════ DATE SELECTOR & EXPORT ═══════════ -->
-<div class="row mb-3">
-    <div class="col-auto">
-        <form method="get" class="d-flex align-items-center gap-2">
-            <label class="form-label mb-0 fw-bold">Booth Date:</label>
-            <input type="date" name="date" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width:170px" onchange="this.form.submit()" />
-        </form>
-    </div>
-    <div class="col-auto ms-auto">
-        <a href="@Url.Action("ExportCsv", new { date = Model.SelectedDate.ToString("yyyy-MM-dd") })" class="btn btn-outline-success btn-sm">
-            <i class="fa fa-file-csv me-1"></i> Export CSV
-        </a>
-    </div>
-</div>
-
-<!-- ═══════════ KPI CARDS ═══════════ -->
-<div class="row">
-    <div class="col-xl-4 col-sm-6">
-        <div class="card">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="text-primary mb-0">@Model.Orders.Count</h4>
-                    <small class="text-muted">Sales Today</small>
+<!-- ═══════════ SESSION SETUP (shown when no active session) ═══════════ -->
+@if (!hasSession)
+{
+    <div class="row justify-content-center" id="sessionSetupPanel">
+        <div class="col-lg-6 col-md-8 col-12">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h4 class="card-title mb-0">Start Booth Session</h4>
                 </div>
-                <div class="icon-box bg-primary-light rounded-circle">
-                    <i class="fa fa-receipt text-primary" style="font-size:1.2rem"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-sm-6">
-        <div class="card">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="text-success mb-0">@Model.TotalSales</h4>
-                    <small class="text-muted">Boxes Sold</small>
-                </div>
-                <div class="icon-box bg-success-light rounded-circle">
-                    <i class="fa fa-box text-success" style="font-size:1.2rem"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-sm-6">
-        <div class="card">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="text-info mb-0">@Model.TotalRevenue.ToString("C")</h4>
-                    <small class="text-muted">Revenue</small>
-                </div>
-                <div class="icon-box rounded-circle" style="background:rgba(54,153,255,.1)">
-                    <i class="fa fa-dollar-sign text-info" style="font-size:1.2rem"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════ QUICK ADD FORM ═══════════ -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title">New Booth Sale</h4>
-            </div>
-            <div class="card-body">
-                <div id="boothLineItems">
-                    <div class="row align-items-end mb-2 booth-line" data-index="0">
-                        <div class="col-md-5">
-                            <label class="form-label">Product</label>
-                            <select class="form-select form-select-sm booth-product">
-                                <option value="">-- select product --</option>
-                                @foreach (var p in Model.Products)
-                                {
-                                    <option value="@p.Value" data-price="@Model.ProductPrices.GetValueOrDefault(p.Value, 0)">@p.Text</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Qty</label>
-                            <input type="number" min="1" value="1" class="form-control form-control-sm booth-qty" />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Subtotal</label>
-                            <input type="text" readonly class="form-control form-control-sm booth-subtotal" value="$0.00" />
-                        </div>
-                        <div class="col-md-1">
-                            <button type="button" class="btn btn-sm btn-outline-danger booth-remove-line" style="margin-top:28px" disabled>
-                                <i class="fa fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="boothAddLine">
-                    <i class="fa fa-plus me-1"></i> Add Product
-                </button>
-                <hr>
-                <div class="row align-items-end">
-                    <div class="col-md-3 mb-2">
-                        <label class="form-label">Booth Location</label>
-                        <input id="boothLocation" list="locationList" class="form-control form-control-sm" placeholder="e.g. Walmart on Main St" />
+                <div class="card-body">
+                    <p class="text-muted text-center mb-3">
+                        Set the location and number of scouts once. All sales during this session will be tracked together.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Booth Location</label>
+                        <input id="sessionLocation" list="locationList" class="form-control" placeholder="e.g. Walmart on Main St" autofocus />
                         <datalist id="locationList">
                             @foreach (var loc in Model.RecentLocations)
                             {
@@ -130,186 +28,557 @@
                             }
                         </datalist>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label">Payment Method</label>
-                        <select id="boothPayment" class="form-select form-select-sm">
-                            @foreach (var pm in Model.PaymentMethods)
-                            {
-                                <option value="@pm.Value">@pm.Text</option>
-                            }
-                        </select>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Number of Girl Scouts</label>
+                        <input type="number" id="sessionScoutCount" class="form-control" min="1" value="1" />
                     </div>
-                    <div class="col-md-3 mb-2">
-                        <label class="form-label">Notes (optional)</label>
-                        <input id="boothNotes" class="form-control form-control-sm" placeholder="Additional notes..." />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes (optional)</label>
+                        <input id="sessionNotes" class="form-control" placeholder="e.g. Troop 774 - Saturday shift" />
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label fw-bold">Total</label>
-                        <p id="boothGrandTotal" class="mb-0 fs-5 fw-bold text-primary">$0.00</p>
+                    <button type="button" class="btn btn-primary w-100 btn-lg" id="startSessionBtn">
+                        <i class="fa fa-play me-2"></i> Start Booth Session
+                    </button>
+                </div>
+            </div>
+            <!-- Past sales date picker for viewing history when no active session -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <form method="get" class="d-flex align-items-center gap-2 justify-content-center">
+                        <label class="form-label mb-0 fw-bold">View Past Sales:</label>
+                        <input type="date" name="date" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width:170px" onchange="this.form.submit()" />
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════════ ACTIVE SESSION BAR ═══════════ -->
+@if (hasSession)
+{
+    <div class="card mb-3 border-primary" id="sessionBar">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <span class="badge badge-primary" style="font-size:0.9rem">
+                        <i class="fa fa-map-marker-alt me-1"></i> @Model.ActiveSession!.Location
+                    </span>
+                    <span class="text-muted">
+                        <i class="fa fa-users me-1"></i> @Model.ActiveSession.ScoutCount Scout@(Model.ActiveSession.ScoutCount != 1 ? "s" : "")
+                    </span>
+                    <span class="text-muted">
+                        <i class="fa fa-clock me-1"></i> Started <span id="sessionTimer" data-start="@Model.ActiveSession.StartedAt.ToString("o")"></span>
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    @{
+                        var csvUrl = Model.ActiveSession != null
+                            ? Url.Action("ExportCsv", new { sessionId = Model.ActiveSession.Id })
+                            : Url.Action("ExportCsv", new { date = Model.SelectedDate.ToString("yyyy-MM-dd") });
+                    }
+                    <a href="@csvUrl" class="btn btn-outline-success btn-sm">
+                        <i class="fa fa-file-csv me-1"></i> Export
+                    </a>
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="endSessionBtn" data-session-id="@Model.ActiveSession!.Id">
+                        <i class="fa fa-stop me-1"></i> End Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ KPI CARDS ═══════════ -->
+    <div class="row">
+        <div class="col-4">
+            <div class="card">
+                <div class="card-body text-center py-2">
+                    <h4 class="text-primary mb-0">@Model.Orders.Count</h4>
+                    <small class="text-muted">Sales</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card">
+                <div class="card-body text-center py-2">
+                    <h4 class="text-success mb-0">@Model.TotalSales</h4>
+                    <small class="text-muted">Boxes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card">
+                <div class="card-body text-center py-2">
+                    <h4 class="text-info mb-0">@Model.TotalRevenue.ToString("C")</h4>
+                    <small class="text-muted">Revenue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ PRODUCT CARD GRID ═══════════ -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h5 class="card-title mb-0">Tap a Cookie to Sell</h5>
+            <div class="d-flex align-items-center gap-2">
+                <select id="boothPayment" class="form-select form-select-sm" style="width:130px">
+                    @foreach (var pm in Model.PaymentMethods)
+                    {
+                        <option value="@pm.Value">@pm.Text</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="card-body pt-2 pb-3">
+            <!-- Cart summary (hidden until items added) -->
+            <div id="cartSummary" class="alert alert-primary d-none mb-3 py-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <strong id="cartItemCount">0</strong> item(s) &middot;
+                        <strong id="cartBoxCount">0</strong> boxes &middot;
+                        Total: <strong id="cartTotal" class="fs-5">$0.00</strong>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <button type="button" class="btn btn-success w-100" id="boothSubmit">
-                            <i class="fa fa-cash-register me-1"></i> Record Sale
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-light btn-sm" id="cartClearBtn">Clear</button>
+                        <button type="button" class="btn btn-success" id="cartSubmitBtn">
+                            <i class="fa fa-check me-1"></i> Submit Sale
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Product grid -->
+            <div class="row g-2" id="productGrid">
+                @foreach (var card in Model.ProductCards)
+                {
+                    var imgSrc = !string.IsNullOrEmpty(card.ImagePath)
+                        ? card.ImagePath
+                        : "/images/pre.gif";
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                        <div class="card product-card h-100 text-center border"
+                             data-product-id="@card.Id"
+                             data-product-name="@card.Name"
+                             data-price="@card.PricePerBox"
+                             style="cursor:pointer; transition: all 0.15s ease;">
+                            <div class="card-body p-2">
+                                <img src="@imgSrc" alt="@card.Name" class="mb-1 rounded" style="width:70px; height:70px; object-fit:contain;" />
+                                <p class="mb-0 fw-bold small" style="line-height:1.2">@card.Name</p>
+                                <small class="text-success fw-bold">@card.PricePerBox.ToString("C")</small>
+                                <!-- Quantity controls (shown when selected) -->
+                                <div class="qty-controls d-none mt-1">
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <button type="button" class="btn btn-outline-danger btn-xs qty-minus" style="width:28px;height:28px;padding:0">
+                                            <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                                        </button>
+                                        <input type="number" class="form-control form-control-sm text-center qty-input" value="1" min="1" style="width:44px;height:28px;padding:2px" />
+                                        <button type="button" class="btn btn-outline-success btn-xs qty-plus" style="width:28px;height:28px;padding:0">
+                                            <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ SESSION SALES LOG ═══════════ -->
+    <div class="card">
+        <div class="card-header py-2">
+            <h5 class="card-title mb-0">Session Sales</h5>
+        </div>
+        <div class="card-body">
+            @if (!Model.Orders.Any())
+            {
+                <p class="text-muted text-center py-3">No sales yet. Tap a cookie above to start selling!</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:35px">#</th>
+                                <th style="width:60px">Time</th>
+                                <th>Products</th>
+                                <th style="width:70px">Payment</th>
+                                <th style="width:50px" class="text-center">Boxes</th>
+                                <th style="width:70px" class="text-end">Total</th>
+                                <th style="width:35px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ var counter = Model.Orders.Count; }
+                            @foreach (var order in Model.Orders)
+                            {
+                                <tr>
+                                    <td>@counter</td>
+                                    <td class="text-nowrap"><small>@order.CreatedAt.ToString("h:mm tt")</small></td>
+                                    <td style="white-space:normal;word-break:break-word">
+                                        <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
+                                    </td>
+                                    <td><small>@order.PaymentMethod</small></td>
+                                    <td class="text-center">@order.TotalQty</td>
+                                    <td class="text-end text-nowrap"><strong>@order.TotalPrice?.ToString("C")</strong></td>
+                                    <td>
+                                        <button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="@order.Id" title="Edit">
+                                            <i class="fa fa-pencil"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                counter--;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- ═══════════ EDIT SALE MODAL ═══════════ -->
+<div class="modal fade" id="editSaleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Sale</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Payment Method</label>
+                    <select id="editPayMethod" class="form-select form-select-sm">
+                        @foreach (var pm in Model.PaymentMethods)
+                        {
+                            <option value="@pm.Value">@pm.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Notes</label>
+                    <input type="text" id="editNotes" class="form-control form-control-sm" />
+                </div>
+                <h6 class="mb-2">Products</h6>
+                <div id="editLineItems"></div>
+                <div class="text-end mt-2">
+                    <strong>Total: <span id="editTotal">$0.00</span></strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="editDeleteBtn">
+                    <i class="fa fa-trash me-1"></i> Delete
+                </button>
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editSaveBtn">
+                    <i class="fa fa-save me-1"></i> Save
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ═══════════ TODAY'S SALES TABLE ═══════════ -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title">Sales for @Model.SelectedDate.ToString("MMM dd, yyyy")</h4>
-            </div>
-            <div class="card-body">
-                @if (!Model.Orders.Any())
-                {
-                    <p class="text-muted text-center py-4">No booth sales recorded for this date.</p>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="width:40px">#</th>
-                                    <th style="width:80px">Time</th>
-                                    <th style="width:150px">Location</th>
-                                    <th>Products</th>
-                                    <th style="width:90px">Payment</th>
-                                    <th style="width:60px">Boxes</th>
-                                    <th style="width:80px">Total</th>
-                                    <th>Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @{ var counter = Model.Orders.Count; }
-                                @foreach (var order in Model.Orders)
-                                {
-                                    var location = ExtractLocation(order.Notes);
-                                    var notes = ExtractNotes(order.Notes);
-                                    <tr>
-                                        <td>@counter</td>
-                                        <td class="text-nowrap">@order.CreatedAt.ToString("hh:mm tt")</td>
-                                        <td style="white-space:normal;word-break:break-word">
-                                            @if (!string.IsNullOrEmpty(location))
-                                            {
-                                                <span class="badge light badge-info">@location</span>
-                                            }
-                                        </td>
-                                        <td style="white-space:normal;word-break:break-word">
-                                            <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
-                                        </td>
-                                        <td>@order.PaymentMethod</td>
-                                        <td class="text-center">@order.TotalQty</td>
-                                        <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
-                                        <td style="white-space:normal;word-break:break-word"><small>@notes</small></td>
-                                    </tr>
-                                    counter--;
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+    .product-card.selected {
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+        background: rgba(0, 123, 255, 0.04);
+    }
+    .product-card:active {
+        transform: scale(0.97);
+    }
+    @@media (max-width: 576px) {
+        .product-card .card-body { padding: 6px !important; }
+        .product-card img { width: 55px !important; height: 55px !important; }
+        .product-card .fw-bold { font-size: 0.75rem !important; }
+    }
+</style>
 
 @section Scripts {
     <script>
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
+        var sessionId = @(hasSession ? $"'{Model.ActiveSession!.Id}'" : "null");
 
-        // ── Product template HTML ──
-        var productOptionsHtml = document.querySelector('.booth-product').innerHTML;
-
-        // ── Calculate subtotals ──
-        function recalc() {
-            var total = 0;
-            document.querySelectorAll('.booth-line').forEach(function (row) {
-                var sel = row.querySelector('.booth-product');
-                var qtyEl = row.querySelector('.booth-qty');
-                var subEl = row.querySelector('.booth-subtotal');
-                var opt = sel.options[sel.selectedIndex];
-                var price = parseFloat(opt?.dataset?.price) || 0;
-                var qty = parseInt(qtyEl.value) || 0;
-                var sub = price * qty;
-                subEl.value = '$' + sub.toFixed(2);
-                total += sub;
-            });
-            document.getElementById('boothGrandTotal').textContent = '$' + total.toFixed(2);
+        // ══════════ SESSION TIMER ══════════
+        var timerEl = document.getElementById('sessionTimer');
+        if (timerEl) {
+            var startTime = new Date(timerEl.dataset.start);
+            function updateTimer() {
+                var now = new Date();
+                var diff = Math.floor((now - startTime) / 1000);
+                var hrs = Math.floor(diff / 3600);
+                var mins = Math.floor((diff % 3600) / 60);
+                timerEl.textContent = (hrs > 0 ? hrs + 'h ' : '') + mins + 'm ago';
+            }
+            updateTimer();
+            setInterval(updateTimer, 30000);
         }
 
-        document.getElementById('boothLineItems').addEventListener('change', recalc);
-        document.getElementById('boothLineItems').addEventListener('input', recalc);
+        // ══════════ START SESSION ══════════
+        var startBtn = document.getElementById('startSessionBtn');
+        if (startBtn) {
+            startBtn.addEventListener('click', function () {
+                var loc = document.getElementById('sessionLocation').value.trim();
+                if (!loc) { alert('Please enter a booth location.'); return; }
 
-        // ── Add line ──
-        document.getElementById('boothAddLine').addEventListener('click', function () {
-            var container = document.getElementById('boothLineItems');
-            var idx = container.querySelectorAll('.booth-line').length;
-            var div = document.createElement('div');
-            div.className = 'row align-items-end mb-2 booth-line';
-            div.dataset.index = idx;
-            div.innerHTML =
-                '<div class="col-md-5"><select class="form-select form-select-sm booth-product">' + productOptionsHtml + '</select></div>' +
-                '<div class="col-md-2"><input type="number" min="1" value="1" class="form-control form-control-sm booth-qty" /></div>' +
-                '<div class="col-md-2"><input type="text" readonly class="form-control form-control-sm booth-subtotal" value="$0.00" /></div>' +
-                '<div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger booth-remove-line"><i class="fa fa-times"></i></button></div>';
-            container.appendChild(div);
-            updateRemoveButtons();
-        });
-
-        // ── Remove line ──
-        document.getElementById('boothLineItems').addEventListener('click', function (e) {
-            var btn = e.target.closest('.booth-remove-line');
-            if (!btn) return;
-            btn.closest('.booth-line').remove();
-            updateRemoveButtons();
-            recalc();
-        });
-
-        function updateRemoveButtons() {
-            var lines = document.querySelectorAll('.booth-line');
-            lines.forEach(function (line) {
-                line.querySelector('.booth-remove-line').disabled = lines.length <= 1;
+                fetch('@Url.Action("StartSession", "Boothing")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        location: loc,
+                        scoutCount: parseInt(document.getElementById('sessionScoutCount').value) || 1,
+                        notes: document.getElementById('sessionNotes').value || null
+                    })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else r.json().then(function (d) { alert(d.error || 'Failed to start session.'); });
+                }).catch(function () { alert('Network error. Please try again.'); });
             });
         }
 
-        // ── Submit sale ──
-        document.getElementById('boothSubmit').addEventListener('click', function () {
-            var items = [];
-            document.querySelectorAll('.booth-line').forEach(function (row) {
-                var productId = row.querySelector('.booth-product').value;
-                var qty = parseInt(row.querySelector('.booth-qty').value) || 0;
-                if (productId && qty > 0) {
-                    items.push({ productId: productId, qty: qty });
+        // ══════════ END SESSION ══════════
+        var endBtn = document.getElementById('endSessionBtn');
+        if (endBtn) {
+            endBtn.addEventListener('click', function () {
+                if (!confirm('End this booth session? You can still view the sales from the history.')) return;
+
+                fetch('@Url.Action("EndSession", "Boothing")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({ sessionId: this.dataset.sessionId })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else r.json().then(function (d) { alert(d.error || 'Failed to end session.'); });
+                }).catch(function () { alert('Network error. Please try again.'); });
+            });
+        }
+
+        // ══════════ PRODUCT CARD SELECTION ══════════
+        var cart = {};
+
+        var grid = document.getElementById('productGrid');
+        if (grid) {
+            grid.addEventListener('click', function (e) {
+                var card = e.target.closest('.product-card');
+                if (!card) return;
+                if (e.target.closest('.qty-minus') || e.target.closest('.qty-plus') || e.target.closest('.qty-input')) return;
+
+                var pid = card.dataset.productId;
+
+                if (card.classList.contains('selected')) {
+                    card.classList.remove('selected');
+                    card.querySelector('.qty-controls').classList.add('d-none');
+                    delete cart[pid];
+                } else {
+                    card.classList.add('selected');
+                    card.querySelector('.qty-controls').classList.remove('d-none');
+                    var qtyInput = card.querySelector('.qty-input');
+                    qtyInput.value = 1;
+                    cart[pid] = {
+                        name: card.dataset.productName,
+                        price: parseFloat(card.dataset.price),
+                        qty: 1
+                    };
                 }
+                updateCart();
             });
 
-            if (items.length === 0) {
-                alert('Add at least one product.');
+            grid.addEventListener('click', function (e) {
+                var minusBtn = e.target.closest('.qty-minus');
+                var plusBtn = e.target.closest('.qty-plus');
+                if (!minusBtn && !plusBtn) return;
+
+                var card = e.target.closest('.product-card');
+                var qtyInput = card.querySelector('.qty-input');
+                var val = parseInt(qtyInput.value) || 1;
+
+                if (minusBtn) val = Math.max(1, val - 1);
+                if (plusBtn) val = val + 1;
+
+                qtyInput.value = val;
+                var pid = card.dataset.productId;
+                if (cart[pid]) cart[pid].qty = val;
+                updateCart();
+            });
+
+            grid.addEventListener('input', function (e) {
+                if (!e.target.classList.contains('qty-input')) return;
+                var card = e.target.closest('.product-card');
+                var pid = card.dataset.productId;
+                var val = parseInt(e.target.value) || 1;
+                if (val < 1) { val = 1; e.target.value = 1; }
+                if (cart[pid]) cart[pid].qty = val;
+                updateCart();
+            });
+        }
+
+        function updateCart() {
+            var summary = document.getElementById('cartSummary');
+            var keys = Object.keys(cart);
+            if (keys.length === 0) {
+                if (summary) summary.classList.add('d-none');
                 return;
             }
+            if (summary) summary.classList.remove('d-none');
 
-            fetch('@Url.Action("QuickAdd", "Boothing")', {
+            var totalBoxes = 0, totalPrice = 0;
+            keys.forEach(function (pid) {
+                totalBoxes += cart[pid].qty;
+                totalPrice += cart[pid].qty * cart[pid].price;
+            });
+
+            document.getElementById('cartItemCount').textContent = keys.length;
+            document.getElementById('cartBoxCount').textContent = totalBoxes;
+            document.getElementById('cartTotal').textContent = '$' + totalPrice.toFixed(2);
+        }
+
+        var clearBtn = document.getElementById('cartClearBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                cart = {};
+                document.querySelectorAll('.product-card.selected').forEach(function (c) {
+                    c.classList.remove('selected');
+                    c.querySelector('.qty-controls').classList.add('d-none');
+                });
+                updateCart();
+            });
+        }
+
+        // ══════════ SUBMIT SALE ══════════
+        var submitBtn = document.getElementById('cartSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function () {
+                var items = [];
+                Object.keys(cart).forEach(function (pid) {
+                    if (cart[pid].qty > 0) {
+                        items.push({ productId: pid, qty: cart[pid].qty });
+                    }
+                });
+
+                if (items.length === 0) { alert('Tap at least one cookie to sell.'); return; }
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
+
+                fetch('@Url.Action("QuickAdd", "Boothing")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        date: selectedDate,
+                        sessionId: sessionId,
+                        paymentMethod: document.getElementById('boothPayment').value,
+                        notes: null,
+                        items: items
+                    })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
+                        r.json().then(function (d) { alert(d.error || 'Failed to record sale.'); });
+                    }
+                }).catch(function () {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
+                    alert('Network error. Please try again.');
+                });
+            });
+        }
+
+        // ══════════ EDIT SALE MODAL ══════════
+        var editOrderId = null;
+        var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { p.Id, p.Name, p.PricePerBox })));
+
+        document.querySelectorAll('.sale-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                editOrderId = this.dataset.orderId;
+
+                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        document.getElementById('editPayMethod').value = d.paymentMethod || 'Cash';
+                        document.getElementById('editNotes').value = d.notes || '';
+
+                        var container = document.getElementById('editLineItems');
+                        container.innerHTML = '';
+
+                        d.lineItems.forEach(function (li) {
+                            var row = document.createElement('div');
+                            row.className = 'row align-items-center mb-2 edit-line';
+                            row.innerHTML =
+                                '<div class="col-6"><select class="form-select form-select-sm edit-product">' +
+                                productData.map(function (p) {
+                                    var sel = p.id === li.productId ? ' selected' : '';
+                                    return '<option value="' + p.id + '" data-price="' + p.pricePerBox + '"' + sel + '>' + p.name + ' ($' + p.pricePerBox.toFixed(2) + ')</option>';
+                                }).join('') +
+                                '</select></div>' +
+                                '<div class="col-3"><input type="number" min="1" value="' + li.quantityBoxes + '" class="form-control form-control-sm edit-qty" /></div>' +
+                                '<div class="col-3 text-end"><strong class="edit-line-total">$' + li.lineTotal.toFixed(2) + '</strong></div>';
+                            container.appendChild(row);
+                        });
+
+                        recalcEditTotal();
+                        var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editSaleModal'));
+                        modal.show();
+                    }).catch(function () { alert('Failed to load sale details.'); });
+            });
+        });
+
+        document.getElementById('editLineItems').addEventListener('change', recalcEditTotal);
+        document.getElementById('editLineItems').addEventListener('input', recalcEditTotal);
+
+        function recalcEditTotal() {
+            var total = 0;
+            document.querySelectorAll('.edit-line').forEach(function (row) {
+                var sel = row.querySelector('.edit-product');
+                var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                var price = parseFloat(sel.options[sel.selectedIndex]?.dataset?.price) || 0;
+                var lineTotal = qty * price;
+                row.querySelector('.edit-line-total').textContent = '$' + lineTotal.toFixed(2);
+                total += lineTotal;
+            });
+            document.getElementById('editTotal').textContent = '$' + total.toFixed(2);
+        }
+
+        document.getElementById('editSaveBtn').addEventListener('click', function () {
+            if (!editOrderId) return;
+
+            var items = [];
+            document.querySelectorAll('.edit-line').forEach(function (row) {
+                var pid = row.querySelector('.edit-product').value;
+                var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                if (pid && qty > 0) items.push({ productId: pid, qty: qty });
+            });
+
+            fetch('@Url.Action("UpdateSale", "Boothing")', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({
-                    date: selectedDate,
-                    location: document.getElementById('boothLocation').value || null,
-                    paymentMethod: document.getElementById('boothPayment').value,
-                    notes: document.getElementById('boothNotes').value || null,
+                    orderId: editOrderId,
+                    paymentMethod: document.getElementById('editPayMethod').value,
+                    notes: document.getElementById('editNotes').value || null,
                     items: items
                 })
             }).then(function (r) {
                 if (r.ok) location.reload();
-                else r.json().then(function (d) { alert(d.error || 'Failed to record sale.'); });
-            });
+                else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+            }).catch(function () { alert('Network error.'); });
+        });
+
+        document.getElementById('editDeleteBtn').addEventListener('click', function () {
+            if (!editOrderId) return;
+            if (!confirm('Delete this sale? This cannot be undone.')) return;
+
+            fetch('@Url.Action("DeleteSale", "Boothing")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({ orderId: editOrderId })
+            }).then(function (r) {
+                if (r.ok) location.reload();
+                else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
+            }).catch(function () { alert('Network error.'); });
         });
     </script>
 }

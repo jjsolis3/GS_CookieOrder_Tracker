@@ -40,6 +40,9 @@ public class Order
     [Column("girl_scout_id")]
     public Guid? GirlScoutId { get; set; }
 
+    [Column("booth_session_id")]
+    public Guid? BoothSessionId { get; set; }
+
     [Column("total_price")]
     public decimal? TotalPrice { get; set; }
 
@@ -57,6 +60,7 @@ public class Order
 
     public Customer? Customer { get; set; }
     public GirlScout? GirlScout { get; set; }
+    public BoothSession? BoothSession { get; set; }
     public List<OrderLineItem> LineItems { get; set; } = new();
     public List<Payback> Paybacks { get; set; } = new();
 }
