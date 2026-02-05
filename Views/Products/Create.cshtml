@@ -73,7 +73,12 @@
                             <label asp-for="ImagePath" class="form-label">Image Path</label>
                             <input asp-for="ImagePath" class="form-control" />
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-2 mb-3">
+                            <label asp-for="SortOrder" class="form-label">Sort Order</label>
+                            <input asp-for="SortOrder" class="form-control" type="number" />
+                            <small class="text-muted">Lower = First</small>
+                        </div>
+                        <div class="col-md-2 mb-3">
                             <div class="form-check mt-4">
                                 <input asp-for="Active" class="form-check-input" type="checkbox" />
                                 <label asp-for="Active" class="form-check-label">Active</label>

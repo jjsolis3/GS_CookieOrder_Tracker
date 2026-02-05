@@ -223,7 +223,8 @@ public class OrdersController : Controller
 
         var products = await _dbContext.Products
             .Where(p => p.Active)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
             .Select(p => new { p.Id, p.Name, p.PricePerBox })
             .ToListAsync();
 
@@ -355,7 +356,8 @@ public class OrdersController : Controller
 
         var products = await _dbContext.Products
             .Where(p => p.Active)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
             .Select(p => new { p.Id, p.Name, p.PricePerBox })
             .ToListAsync();
 

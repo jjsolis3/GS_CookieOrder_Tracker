@@ -295,7 +295,8 @@ public class InventoryController : Controller
     {
         return await _dbContext.Products
             .Where(product => product.Active)
-            .OrderBy(product => product.Name)
+            .OrderBy(product => product.SortOrder)
+            .ThenBy(product => product.Name)
             .Select(product => new SelectListItem(product.Name, product.Id.ToString()))
             .ToListAsync();
     }

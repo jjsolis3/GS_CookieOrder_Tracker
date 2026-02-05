@@ -174,6 +174,10 @@
                                 <strong id="detailBarcode"></strong>
                             </div>
                             <div class="col-6 mb-2">
+                                <small class="text-muted d-block">Sort Order</small>
+                                <strong id="detailSortOrder"></strong>
+                            </div>
+                            <div class="col-6 mb-2">
                                 <small class="text-muted d-block">Status</small>
                                 <span id="detailStatus"></span>
                             </div>
@@ -256,7 +260,12 @@
                         <label class="form-label">Image Path / URL</label>
                         <input id="editImagePath" class="form-control" />
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Sort Order</label>
+                        <input id="editSortOrder" type="number" class="form-control" />
+                        <small class="text-muted">Lower = First</small>
+                    </div>
+                    <div class="col-md-2 mb-3">
                         <div class="form-check mt-4">
                             <input id="editActive" class="form-check-input" type="checkbox" />
                             <label class="form-check-label">Active</label>
@@ -303,6 +312,7 @@
                     document.getElementById('detailReward').textContent = d.reward != null ? '$' + d.reward.toFixed(2) : '—';
                     document.getElementById('detailVendor').textContent = d.vendor || '—';
                     document.getElementById('detailBarcode').textContent = d.barcode || '—';
+                    document.getElementById('detailSortOrder').textContent = d.sortOrder || 0;
                     document.getElementById('detailStatus').innerHTML = d.active
                         ? '<span class="badge light badge-success">Active</span>'
                         : '<span class="badge light badge-secondary">Inactive</span>';
@@ -341,6 +351,7 @@
                     document.getElementById('editVendor').value = d.vendor || '';
                     document.getElementById('editBarcode').value = d.barcode || '';
                     document.getElementById('editImagePath').value = d.imagePath || '';
+                    document.getElementById('editSortOrder').value = d.sortOrder || 0;
                     document.getElementById('editActive').checked = d.active;
 
                     editModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('productEditModal'));
@@ -368,6 +379,7 @@
                     vendor: document.getElementById('editVendor').value || null,
                     barcode: document.getElementById('editBarcode').value || null,
                     imagePath: document.getElementById('editImagePath').value || null,
+                    sortOrder: parseInt(document.getElementById('editSortOrder').value) || 0,
                     active: document.getElementById('editActive').checked
                 })
             }).then(function (r) {

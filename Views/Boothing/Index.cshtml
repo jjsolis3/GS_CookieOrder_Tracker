@@ -327,22 +327,28 @@
 
 @section Scripts {
     <script>
-        (function() {
-            'use strict';
+        // ══════════ BOOTH SALES JAVASCRIPT ══════════
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[BoothSales] Script initialized');
 
-            // ══════════ SAFE ELEMENT ACCESS ══════════
-            function $(id) { return document.getElementById(id); }
-            function $$(sel) { return document.querySelectorAll(sel); }
+            // Safe element access helpers
+            function getEl(id) { return document.getElementById(id); }
+            function getAll(sel) { return document.querySelectorAll(sel); }
 
+            // CSRF token
             var csrfMeta = document.querySelector('meta[name="csrf-token"]');
             var csrfToken = csrfMeta ? csrfMeta.content : '';
+
+            // Page state
             var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
-            var sessionId = @(hasSession ? $"'{Model.ActiveSession!.Id}'" : "null");
-            var currentSaleCount = @Model.Orders.Count;
+            var sessionId = '@(hasSession ? Model.ActiveSession!.Id.ToString() : "")';
+            var currentSaleCount = parseInt('@Model.Orders.Count') || 0;
             var cart = {};
 
+            console.log('[BoothSales] Session ID:', sessionId || '(none)');
+
             // ══════════ SESSION TIMER ══════════
-            var timerEl = $('sessionTimer');
+            var timerEl = getEl('sessionTimer');
             if (timerEl && timerEl.dataset.start) {
                 var startTime = new Date(timerEl.dataset.start);
                 function updateTimer() {
@@ -357,15 +363,16 @@
             }
 
             // ══════════ START SESSION ══════════
-            var startBtn = $('startSessionBtn');
+            var startBtn = getEl('startSessionBtn');
             if (startBtn) {
-                startBtn.addEventListener('click', function () {
-                    var locEl = $('sessionLocation');
+                console.log('[BoothSales] Start session button found');
+                startBtn.onclick = function() {
+                    var locEl = getEl('sessionLocation');
                     var loc = locEl ? locEl.value.trim() : '';
                     if (!loc) { alert('Please enter a booth location.'); return; }
 
-                    var scoutCountEl = $('sessionScoutCount');
-                    var notesEl = $('sessionNotes');
+                    var scoutCountEl = getEl('sessionScoutCount');
+                    var notesEl = getEl('sessionNotes');
 
                     fetch('@Url.Action("StartSession", "Boothing")', {
                         method: 'POST',
@@ -375,69 +382,63 @@
                             scoutCount: scoutCountEl ? (parseInt(scoutCountEl.value) || 1) : 1,
                             notes: notesEl ? (notesEl.value || null) : null
                         })
-                    }).then(function (r) {
+                    }).then(function(r) {
                         if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to start session.'); });
-                    }).catch(function () { alert('Network error. Please try again.'); });
-                });
+                        else r.json().then(function(d) { alert(d.error || 'Failed to start session.'); });
+                    }).catch(function() { alert('Network error. Please try again.'); });
+                };
             }
 
             // ══════════ END SESSION ══════════
-            var endBtn = $('endSessionBtn');
+            var endBtn = getEl('endSessionBtn');
             if (endBtn) {
-                endBtn.addEventListener('click', function () {
+                console.log('[BoothSales] End session button found, sessionId from data attr:', endBtn.dataset.sessionId);
+                endBtn.onclick = function() {
+                    console.log('[BoothSales] End session clicked');
                     if (!confirm('End this booth session? You can still view the sales from the history.')) return;
+
+                    var sid = endBtn.dataset.sessionId;
+                    console.log('[BoothSales] Ending session:', sid);
 
                     fetch('@Url.Action("EndSession", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                        body: JSON.stringify({ sessionId: this.dataset.sessionId })
-                    }).then(function (r) {
+                        body: JSON.stringify({ sessionId: sid })
+                    }).then(function(r) {
+                        console.log('[BoothSales] End session response:', r.status);
                         if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to end session.'); });
-                    }).catch(function () { alert('Network error. Please try again.'); });
-                });
+                        else r.json().then(function(d) { alert(d.error || 'Failed to end session.'); });
+                    }).catch(function(err) {
+                        console.error('[BoothSales] End session error:', err);
+                        alert('Network error. Please try again.');
+                    });
+                };
             }
 
-            // ══════════ PRODUCT CARD GRID ══════════
-            var grid = $('productGrid');
-            if (grid) {
-                // Single unified click handler for the entire grid
-                grid.addEventListener('click', function (e) {
-                    var card = e.target.closest('.product-card');
-                    if (!card) return;
+            // ══════════ PRODUCT CARD CLICK HANDLING ══════════
+            var productCards = getAll('.product-card');
+            console.log('[BoothSales] Found', productCards.length, 'product cards');
 
-                    var pid = card.dataset.productId;
-                    if (!pid) return;
+            productCards.forEach(function(card) {
+                // Main card click handler
+                card.onclick = function(e) {
+                    console.log('[BoothSales] Card clicked:', card.dataset.productName);
 
-                    var qtyControls = card.querySelector('.qty-controls');
-                    var qtyInput = card.querySelector('.qty-input');
-
-                    // Check if click was on qty +/- buttons
-                    var minusBtn = e.target.closest('.qty-minus');
-                    var plusBtn = e.target.closest('.qty-plus');
-
-                    if (minusBtn || plusBtn) {
-                        // Handle +/- button clicks
-                        if (!qtyInput) return;
-                        var val = parseInt(qtyInput.value) || 1;
-                        if (minusBtn) val = Math.max(1, val - 1);
-                        if (plusBtn) val = val + 1;
-                        qtyInput.value = val;
-                        if (cart[pid]) cart[pid].qty = val;
-                        updateCart();
+                    // Ignore clicks on buttons or input
+                    if (e.target.closest('.qty-minus') || e.target.closest('.qty-plus') || e.target.classList.contains('qty-input')) {
                         return;
                     }
 
-                    // Ignore clicks directly on the input field
-                    if (e.target.classList.contains('qty-input')) return;
+                    var pid = card.dataset.productId;
+                    var qtyControls = card.querySelector('.qty-controls');
+                    var qtyInput = card.querySelector('.qty-input');
 
-                    // Toggle card selection
                     if (card.classList.contains('selected')) {
                         // Deselect
                         card.classList.remove('selected');
                         if (qtyControls) qtyControls.classList.add('d-none');
                         delete cart[pid];
+                        console.log('[BoothSales] Deselected:', card.dataset.productName);
                     } else {
                         // Select
                         card.classList.add('selected');
@@ -448,25 +449,57 @@
                             price: parseFloat(card.dataset.price) || 0,
                             qty: 1
                         };
+                        console.log('[BoothSales] Selected:', card.dataset.productName);
                     }
                     updateCart();
-                });
+                };
 
-                // Handle direct input changes in qty field
-                grid.addEventListener('input', function (e) {
-                    if (!e.target.classList.contains('qty-input')) return;
-                    var card = e.target.closest('.product-card');
-                    if (!card) return;
-                    var pid = card.dataset.productId;
-                    var val = parseInt(e.target.value) || 1;
-                    if (val < 1) { val = 1; e.target.value = 1; }
-                    if (cart[pid]) cart[pid].qty = val;
-                    updateCart();
-                });
-            }
+                // Qty minus button
+                var minusBtn = card.querySelector('.qty-minus');
+                if (minusBtn) {
+                    minusBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        var qtyInput = card.querySelector('.qty-input');
+                        var pid = card.dataset.productId;
+                        var val = parseInt(qtyInput.value) || 1;
+                        val = Math.max(1, val - 1);
+                        qtyInput.value = val;
+                        if (cart[pid]) cart[pid].qty = val;
+                        updateCart();
+                    };
+                }
+
+                // Qty plus button
+                var plusBtn = card.querySelector('.qty-plus');
+                if (plusBtn) {
+                    plusBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        var qtyInput = card.querySelector('.qty-input');
+                        var pid = card.dataset.productId;
+                        var val = parseInt(qtyInput.value) || 1;
+                        val = val + 1;
+                        qtyInput.value = val;
+                        if (cart[pid]) cart[pid].qty = val;
+                        updateCart();
+                    };
+                }
+
+                // Qty input change
+                var qtyInput = card.querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyInput.onclick = function(e) { e.stopPropagation(); };
+                    qtyInput.onchange = function() {
+                        var pid = card.dataset.productId;
+                        var val = parseInt(qtyInput.value) || 1;
+                        if (val < 1) { val = 1; qtyInput.value = 1; }
+                        if (cart[pid]) cart[pid].qty = val;
+                        updateCart();
+                    };
+                }
+            });
 
             function updateCart() {
-                var summary = $('cartSummary');
+                var summary = getEl('cartSummary');
                 var keys = Object.keys(cart);
                 if (keys.length === 0) {
                     if (summary) summary.classList.add('d-none');
@@ -475,33 +508,33 @@
                 if (summary) summary.classList.remove('d-none');
 
                 var totalBoxes = 0, totalPrice = 0;
-                keys.forEach(function (pid) {
+                keys.forEach(function(pid) {
                     totalBoxes += cart[pid].qty;
                     totalPrice += cart[pid].qty * cart[pid].price;
                 });
 
-                var itemCountEl = $('cartItemCount');
-                var boxCountEl = $('cartBoxCount');
-                var totalEl = $('cartTotal');
+                var itemCountEl = getEl('cartItemCount');
+                var boxCountEl = getEl('cartBoxCount');
+                var totalEl = getEl('cartTotal');
                 if (itemCountEl) itemCountEl.textContent = keys.length;
                 if (boxCountEl) boxCountEl.textContent = totalBoxes;
                 if (totalEl) totalEl.textContent = '$' + totalPrice.toFixed(2);
             }
 
-            var clearBtn = $('cartClearBtn');
+            var clearBtn = getEl('cartClearBtn');
             if (clearBtn) {
-                clearBtn.addEventListener('click', function () {
+                clearBtn.onclick = function() {
                     cart = {};
-                    $$('.product-card.selected').forEach(function (c) {
+                    getAll('.product-card.selected').forEach(function(c) {
                         c.classList.remove('selected');
                         var qc = c.querySelector('.qty-controls');
                         if (qc) qc.classList.add('d-none');
                     });
                     updateCart();
-                });
+                };
             }
 
-            // ══════════ FLASH KPI ANIMATION ══════════
+            // ══════════ KPI HELPERS ══════════
             function flashKpi(el) {
                 if (!el) return;
                 el.classList.remove('kpi-flash');
@@ -510,9 +543,9 @@
             }
 
             function updateKpis(kpi) {
-                var saleEl = $('kpiSaleCount');
-                var boxEl = $('kpiBoxCount');
-                var revEl = $('kpiRevenue');
+                var saleEl = getEl('kpiSaleCount');
+                var boxEl = getEl('kpiBoxCount');
+                var revEl = getEl('kpiRevenue');
                 if (saleEl) { saleEl.textContent = kpi.saleCount; flashKpi(saleEl); }
                 if (boxEl) { boxEl.textContent = kpi.totalBoxes; flashKpi(boxEl); }
                 if (revEl) { revEl.textContent = '$' + kpi.totalRevenue.toFixed(2); flashKpi(revEl); }
@@ -527,9 +560,9 @@
 
             function addSaleRow(sale) {
                 currentSaleCount++;
-                var tbody = $('salesTableBody');
-                var emptyMsg = $('salesEmpty');
-                var tableWrap = $('salesTableWrap');
+                var tbody = getEl('salesTableBody');
+                var emptyMsg = getEl('salesEmpty');
+                var tableWrap = getEl('salesTableWrap');
 
                 if (emptyMsg) emptyMsg.classList.add('d-none');
                 if (tableWrap) tableWrap.classList.remove('d-none');
@@ -551,11 +584,11 @@
             }
 
             // ══════════ SUBMIT SALE ══════════
-            var submitBtn = $('cartSubmitBtn');
+            var submitBtn = getEl('cartSubmitBtn');
             if (submitBtn) {
-                submitBtn.addEventListener('click', function () {
+                submitBtn.onclick = function() {
                     var items = [];
-                    Object.keys(cart).forEach(function (pid) {
+                    Object.keys(cart).forEach(function(pid) {
                         if (cart[pid].qty > 0) {
                             items.push({ productId: pid, qty: cart[pid].qty });
                         }
@@ -566,29 +599,29 @@
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
 
-                    var scoutEl = $('boothScout');
+                    var scoutEl = getEl('boothScout');
                     var girlScoutId = scoutEl && scoutEl.value ? scoutEl.value : null;
-                    var paymentEl = $('boothPayment');
+                    var paymentEl = getEl('boothPayment');
 
                     fetch('@Url.Action("QuickAdd", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                         body: JSON.stringify({
                             date: selectedDate,
-                            sessionId: sessionId,
+                            sessionId: sessionId || null,
                             paymentMethod: paymentEl ? paymentEl.value : 'Cash',
                             girlScoutId: girlScoutId,
                             notes: null,
                             items: items
                         })
-                    }).then(function (r) {
+                    }).then(function(r) {
                         if (r.ok) {
-                            return r.json().then(function (d) {
+                            return r.json().then(function(d) {
                                 if (d.kpi) updateKpis(d.kpi);
                                 if (d.sale) addSaleRow(d.sale);
 
                                 cart = {};
-                                $$('.product-card.selected').forEach(function (c) {
+                                getAll('.product-card.selected').forEach(function(c) {
                                     c.classList.remove('selected');
                                     var qc = c.querySelector('.qty-controls');
                                     if (qc) qc.classList.add('d-none');
@@ -601,30 +634,30 @@
                         } else {
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
-                            r.json().then(function (d) { alert(d.error || 'Failed to record sale.'); });
+                            r.json().then(function(d) { alert(d.error || 'Failed to record sale.'); });
                         }
-                    }).catch(function () {
+                    }).catch(function() {
                         submitBtn.disabled = false;
                         submitBtn.innerHTML = '<i class="fa fa-check me-1"></i> Submit Sale';
                         alert('Network error. Please try again.');
                     });
-                });
+                };
             }
 
             // ══════════ EDIT SALE MODAL ══════════
             var editOrderId = null;
-            var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { p.Id, p.Name, p.PricePerBox })));
+            var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { id = p.Id.ToString(), name = p.Name, pricePerBox = p.PricePerBox })));
 
             function openEditModal(orderId) {
                 editOrderId = orderId;
 
                 fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                        var payMethodEl = $('editPayMethod');
-                        var notesEl = $('editNotes');
-                        var scoutEl = $('editScout');
-                        var container = $('editLineItems');
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        var payMethodEl = getEl('editPayMethod');
+                        var notesEl = getEl('editNotes');
+                        var scoutEl = getEl('editScout');
+                        var container = getEl('editLineItems');
 
                         if (payMethodEl) payMethodEl.value = d.paymentMethod || 'Cash';
                         if (notesEl) notesEl.value = d.notes || '';
@@ -632,12 +665,12 @@
 
                         if (container) {
                             container.innerHTML = '';
-                            d.lineItems.forEach(function (li) {
+                            d.lineItems.forEach(function(li) {
                                 var row = document.createElement('div');
                                 row.className = 'row align-items-center mb-2 edit-line';
                                 row.innerHTML =
                                     '<div class="col-6"><select class="form-select form-select-sm edit-product">' +
-                                    productData.map(function (p) {
+                                    productData.map(function(p) {
                                         var sel = p.id === li.productId ? ' selected' : '';
                                         return '<option value="' + p.id + '" data-price="' + p.pricePerBox + '"' + sel + '>' + p.name + ' ($' + p.pricePerBox.toFixed(2) + ')</option>';
                                     }).join('') +
@@ -649,19 +682,20 @@
                         }
 
                         recalcEditTotal();
-                        var modalEl = $('editSaleModal');
+                        var modalEl = getEl('editSaleModal');
                         if (modalEl) {
                             var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                             modal.show();
                         }
-                    }).catch(function () { alert('Failed to load sale details.'); });
+                    }).catch(function() { alert('Failed to load sale details.'); });
             }
 
             function recalcEditTotal() {
                 var total = 0;
-                $$('.edit-line').forEach(function (row) {
+                getAll('.edit-line').forEach(function(row) {
                     var sel = row.querySelector('.edit-product');
-                    var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                    var qtyEl = row.querySelector('.edit-qty');
+                    var qty = qtyEl ? (parseInt(qtyEl.value) || 0) : 0;
                     var opt = sel ? sel.options[sel.selectedIndex] : null;
                     var price = opt ? (parseFloat(opt.dataset.price) || 0) : 0;
                     var lineTotal = qty * price;
@@ -669,11 +703,11 @@
                     if (ltEl) ltEl.textContent = '$' + lineTotal.toFixed(2);
                     total += lineTotal;
                 });
-                var totalEl = $('editTotal');
+                var totalEl = getEl('editTotal');
                 if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
             }
 
-            // Use event delegation for edit buttons (works for dynamically added rows)
+            // Edit button click delegation
             document.addEventListener('click', function(e) {
                 var editBtn = e.target.closest('.sale-edit-btn');
                 if (editBtn && editBtn.dataset.orderId) {
@@ -681,28 +715,29 @@
                 }
             });
 
-            var editLineItems = $('editLineItems');
+            var editLineItems = getEl('editLineItems');
             if (editLineItems) {
                 editLineItems.addEventListener('change', recalcEditTotal);
                 editLineItems.addEventListener('input', recalcEditTotal);
             }
 
-            var editSaveBtn = $('editSaveBtn');
+            var editSaveBtn = getEl('editSaveBtn');
             if (editSaveBtn) {
-                editSaveBtn.addEventListener('click', function () {
+                editSaveBtn.onclick = function() {
                     if (!editOrderId) return;
 
                     var items = [];
-                    $$('.edit-line').forEach(function (row) {
+                    getAll('.edit-line').forEach(function(row) {
                         var pid = row.querySelector('.edit-product').value;
-                        var qty = parseInt(row.querySelector('.edit-qty').value) || 0;
+                        var qtyEl = row.querySelector('.edit-qty');
+                        var qty = qtyEl ? (parseInt(qtyEl.value) || 0) : 0;
                         if (pid && qty > 0) items.push({ productId: pid, qty: qty });
                     });
 
-                    var scoutEl = $('editScout');
+                    var scoutEl = getEl('editScout');
                     var girlScoutId = scoutEl && scoutEl.value ? scoutEl.value : null;
-                    var payMethodEl = $('editPayMethod');
-                    var notesEl = $('editNotes');
+                    var payMethodEl = getEl('editPayMethod');
+                    var notesEl = getEl('editNotes');
 
                     fetch('@Url.Action("UpdateSale", "Boothing")', {
                         method: 'POST',
@@ -714,16 +749,16 @@
                             girlScoutId: girlScoutId,
                             items: items
                         })
-                    }).then(function (r) {
+                    }).then(function(r) {
                         if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
-                    }).catch(function () { alert('Network error.'); });
-                });
+                        else r.json().then(function(d) { alert(d.error || 'Failed to save.'); });
+                    }).catch(function() { alert('Network error.'); });
+                };
             }
 
-            var editDeleteBtn = $('editDeleteBtn');
+            var editDeleteBtn = getEl('editDeleteBtn');
             if (editDeleteBtn) {
-                editDeleteBtn.addEventListener('click', function () {
+                editDeleteBtn.onclick = function() {
                     if (!editOrderId) return;
                     if (!confirm('Delete this sale? This cannot be undone.')) return;
 
@@ -731,13 +766,14 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                         body: JSON.stringify({ orderId: editOrderId })
-                    }).then(function (r) {
+                    }).then(function(r) {
                         if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
-                    }).catch(function () { alert('Network error.'); });
-                });
+                        else r.json().then(function(d) { alert(d.error || 'Failed to delete.'); });
+                    }).catch(function() { alert('Network error.'); });
+                };
             }
 
-        })();
+            console.log('[BoothSales] All event handlers attached');
+        });
     </script>
 }

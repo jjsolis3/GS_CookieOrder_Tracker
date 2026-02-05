@@ -55,10 +55,11 @@ public class BoothingController : Controller
                 .ToListAsync();
         }
 
-        // Products with images for card grid
+        // Products with images for card grid (ordered by SortOrder, then Name)
         var products = await _dbContext.Products
             .Where(p => p.Active)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
             .ToListAsync();
 
         var productCards = products.Select(p => new ProductCard
