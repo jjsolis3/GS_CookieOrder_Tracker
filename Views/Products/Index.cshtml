@@ -318,7 +318,7 @@
                         noImg.style.display = 'block';
                     }
 
-                    detailModalInstance = new bootstrap.Modal(document.getElementById('productDetailModal'));
+                    detailModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailModal'));
                     detailModalInstance.show();
                 });
         }
@@ -343,7 +343,7 @@
                     document.getElementById('editImagePath').value = d.imagePath || '';
                     document.getElementById('editActive').checked = d.active;
 
-                    editModalInstance = new bootstrap.Modal(document.getElementById('productEditModal'));
+                    editModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('productEditModal'));
                     editModalInstance.show();
                 });
         });

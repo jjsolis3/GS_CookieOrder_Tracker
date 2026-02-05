@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GS_CookieOrder_Tracker.Controllers;
 
 [Authorize]
+[AutoValidateAntiforgeryToken]
 public class InventoryController : Controller
 {
     private readonly AppDbContext _dbContext;
@@ -189,6 +190,72 @@ public class InventoryController : Controller
         return View(vm);
     }
 
+    // ───────── AJAX: Get batch detail ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetBatchDetail(Guid id)
+    {
+        var batch = await _dbContext.InventoryBatches
+            .Include(b => b.GirlScout)
+            .Include(b => b.Receipts).ThenInclude(r => r.Product)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (batch == null) return NotFound();
+
+        return Json(new
+        {
+            id = batch.Id,
+            status = batch.Status,
+            batchType = batch.BatchType,
+            pickupDate = batch.PickupDate?.ToString("yyyy-MM-dd"),
+            notes = batch.Notes,
+            girlScoutName = batch.GirlScout != null ? $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}" : "Unassigned",
+            girlScoutId = batch.GirlScoutId?.ToString() ?? "",
+            totalBoxes = batch.TotalBoxes,
+            totalCases = batch.TotalCases,
+            receipts = batch.Receipts.Select(r => new
+            {
+                id = r.Id,
+                productName = r.Product?.Name ?? "—",
+                productId = r.ProductId,
+                quantityBoxes = r.QuantityBoxes,
+                quantityCases = r.QuantityCases
+            })
+        });
+    }
+
+    // ───────── AJAX: Update batch ─────────
+    [HttpPost]
+    public async Task<IActionResult> UpdateBatch([FromBody] UpdateBatchRequest req)
+    {
+        var batch = await _dbContext.InventoryBatches.FindAsync(req.BatchId);
+        if (batch == null) return NotFound(new { error = "Batch not found." });
+
+        batch.Status = req.Status;
+        batch.BatchType = req.BatchType;
+        batch.PickupDate = string.IsNullOrEmpty(req.PickupDate) ? null : DateOnly.Parse(req.PickupDate);
+        batch.Notes = req.Notes;
+        batch.GirlScoutId = string.IsNullOrEmpty(req.GirlScoutId) ? null : Guid.Parse(req.GirlScoutId);
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Delete batch ─────────
+    [HttpPost]
+    public async Task<IActionResult> DeleteBatch([FromBody] DeleteBatchRequest req)
+    {
+        var batch = await _dbContext.InventoryBatches
+            .Include(b => b.Receipts)
+            .FirstOrDefaultAsync(b => b.Id == req.BatchId);
+
+        if (batch == null) return NotFound(new { error = "Batch not found." });
+
+        _dbContext.InventoryReceipts.RemoveRange(batch.Receipts);
+        _dbContext.InventoryBatches.Remove(batch);
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
     private async Task PopulateDropdowns(InventoryBatchCreateViewModel model)
     {
         model.GirlScouts = await BuildGirlScoutOptionsAsync();
@@ -229,4 +296,19 @@ public class InventoryController : Controller
             .Select(product => new SelectListItem(product.Name, product.Id.ToString()))
             .ToListAsync();
     }
+}
+
+public class UpdateBatchRequest
+{
+    public Guid BatchId { get; set; }
+    public string? Status { get; set; }
+    public string? BatchType { get; set; }
+    public string? PickupDate { get; set; }
+    public string? Notes { get; set; }
+    public string? GirlScoutId { get; set; }
+}
+
+public class DeleteBatchRequest
+{
+    public Guid BatchId { get; set; }
 }

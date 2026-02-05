@@ -441,7 +441,7 @@
                 .then(function (data) {
                     currentOrderData = data;
                     populateModal(data);
-                    var modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+                    var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('orderDetailModal'));
                     modal.show();
                 });
         }

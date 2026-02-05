@@ -80,6 +80,7 @@ public class HomeController : Controller
             .Take(10)
             .Select(o => new RecentOrderRow
             {
+                OrderId = o.Id,
                 OrderedAt = o.OrderedAt,
                 CustomerName = o.Customer != null ? o.Customer.Name : "",
                 OrderType = o.OrderType,

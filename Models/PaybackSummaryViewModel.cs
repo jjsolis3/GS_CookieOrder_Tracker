@@ -8,6 +8,7 @@ public class PaybackSummaryViewModel
     public decimal TotalReturnedValue { get; set; }
     public decimal TotalOwed { get; set; }
     public decimal TotalPaid { get; set; }
+    public int TotalBoxesPaid { get; set; }
     public decimal TotalRemaining => TotalOwed - TotalPaid;
 
     /// <summary>Recent payment records with running total.</summary>
@@ -24,10 +25,12 @@ public class PaybackProductRow
 
 public class PaybackPaymentRow
 {
+    public Guid Id { get; set; }
     public DateTime PaidAt { get; set; }
     public decimal Amount { get; set; }
     public string? Method { get; set; }
     public string? Notes { get; set; }
     public string? OrderInfo { get; set; }
+    public Guid? OrderId { get; set; }
     public decimal RunningTotal { get; set; }
 }

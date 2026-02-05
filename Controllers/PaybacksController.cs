@@ -69,16 +69,20 @@ public class PaybacksController : Controller
 
         var totalPaid = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
+        var totalBoxesPaid = paidByProduct.Sum(r => r.BoxesSold);
+
         var recentPaymentsRaw = await _dbContext.Paybacks
             .Include(p => p.Order).ThenInclude(o => o!.Customer)
             .OrderByDescending(p => p.PaidAt)
             .Take(20)
             .Select(p => new PaybackPaymentRow
             {
+                Id = p.Id,
                 PaidAt = p.PaidAt,
                 Amount = p.Amount,
                 Method = p.Method,
                 Notes = p.Notes,
+                OrderId = p.OrderId,
                 OrderInfo = p.Order != null
                     ? p.Order.OrderedAt.ToString("yyyy-MM-dd") + " - " + (p.Order.Customer != null ? p.Order.Customer.Name : "")
                     : ""
@@ -101,6 +105,7 @@ public class PaybacksController : Controller
             TotalReturnedValue = returnedValue,
             TotalOwed = totalOwed,
             TotalPaid = totalPaid,
+            TotalBoxesPaid = totalBoxesPaid,
             RecentPayments = recentPaymentsRaw
         };
 
@@ -169,6 +174,50 @@ public class PaybacksController : Controller
         await _dbContext.SaveChangesAsync();
         return Ok(new { success = true });
     }
+
+    // ───────── AJAX: Update payment ─────────
+    [HttpPost]
+    public async Task<IActionResult> UpdatePayment([FromBody] UpdatePaymentRequest req)
+    {
+        var payback = await _dbContext.Paybacks.FindAsync(req.PaymentId);
+        if (payback == null) return NotFound(new { error = "Payment not found." });
+
+        payback.Amount = req.Amount;
+        payback.Method = req.Method;
+        payback.Notes = req.Notes;
+        if (!string.IsNullOrEmpty(req.PaidAt))
+            payback.PaidAt = DateTime.SpecifyKind(DateTime.Parse(req.PaidAt), DateTimeKind.Utc);
+        payback.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Delete payment ─────────
+    [HttpPost]
+    public async Task<IActionResult> DeletePayment([FromBody] DeletePaymentRequest req)
+    {
+        var payback = await _dbContext.Paybacks.FindAsync(req.PaymentId);
+        if (payback == null) return NotFound(new { error = "Payment not found." });
+
+        _dbContext.Paybacks.Remove(payback);
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+}
+
+public class UpdatePaymentRequest
+{
+    public Guid PaymentId { get; set; }
+    public string? PaidAt { get; set; }
+    public decimal Amount { get; set; }
+    public string? Method { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class DeletePaymentRequest
+{
+    public Guid PaymentId { get; set; }
 }
 
 public class CreateMultiplePaybacksRequest

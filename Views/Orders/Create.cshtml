@@ -97,7 +97,14 @@
                                     <select name="LineItems[@i].InventorySource" class="form-select inv-source-select">
                                         @foreach (var s in Model.InventorySources)
                                         {
-                                            <option value="@s.Value" selected="@(s.Value == Model.LineItems[i].InventorySource)">@s.Text</option>
+                                            if (s.Value == Model.LineItems[i].InventorySource)
+                                            {
+                                                <option value="@s.Value" selected>@s.Text</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@s.Value">@s.Text</option>
+                                            }
                                         }
                                     </select>
                                 </div>
@@ -234,7 +241,7 @@
             document.getElementById('custEmail').value = '';
             document.getElementById('custPhone').value = '';
             document.getElementById('custModalError').classList.add('d-none');
-            var modal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('newCustomerModal'));
             modal.show();
         });
 
