@@ -25,13 +25,16 @@
                             <select asp-for="BatchType" asp-items="Model.BatchTypes" class="form-select default-select"></select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label asp-for="PickupDate" class="form-label">Pickup Date</label>
-                            <input asp-for="PickupDate" type="date" class="form-control" />
-                        </div>
-                        <div class="col-md-6 mb-3">
                             <label asp-for="GirlScoutId" class="form-label">Girl Scout</label>
                             <select asp-for="GirlScoutId" asp-items="Model.GirlScouts" class="form-select default-select"></select>
                         </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PickupDate" class="form-label">Pickup Date</label>
+                            <input asp-for="PickupDate" type="date" class="form-control" />
+                        </div>
+                        
                         <div class="col-md-6 mb-3">
                             <label asp-for="Notes" class="form-label">Notes</label>
                             <input asp-for="Notes" class="form-control" />

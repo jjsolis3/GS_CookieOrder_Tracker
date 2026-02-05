@@ -1,58 +1,187 @@
 @model GS_CookieOrder_Tracker.Models.PaybackCreateViewModel
 
 @{
-    ViewData["Title"] = "New Payback";
+    ViewData["Title"] = "Record Payment to GS of GLA";
 }
 
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title">New Payback</h4>
+                <h4 class="card-title">Record Payment to GS of GLA</h4>
             </div>
             <div class="card-body">
-                <form asp-action="Create" method="post">
-                    @Html.AntiForgeryToken()
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label asp-for="OrderId" class="form-label">Order</label>
-                            <select asp-for="OrderId" asp-items="Model.Orders" class="form-select default-select"></select>
-                            <span asp-validation-for="OrderId" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label asp-for="CustomerId" class="form-label">Customer</label>
-                            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select default-select"></select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label asp-for="PaidAt" class="form-label">Paid At</label>
-                            <input asp-for="PaidAt" type="datetime-local" class="form-control" />
-                            <span asp-validation-for="PaidAt" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label asp-for="Amount" class="form-label">Amount</label>
-                            <input asp-for="Amount" class="form-control" />
-                            <span asp-validation-for="Amount" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label asp-for="Method" class="form-label">Method</label>
-                            <input asp-for="Method" class="form-control" />
-                        </div>
-                        <div class="col-12 mb-3">
-                            <label asp-for="Notes" class="form-label">Notes</label>
-                            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
-                        </div>
+                <!-- Payment Details -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Payment Date</label>
+                        <input type="date" id="paybackDate" class="form-control form-control-sm" value="@Model.PaidAt.ToString("yyyy-MM-dd")" />
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Payment Method</label>
+                        <select id="paybackMethod" class="form-select form-select-sm">
+                            @foreach (var pm in Model.PaymentMethods)
+                            {
+                                if (pm.Value == Model.Method)
+                                {
+                                    <option value="@pm.Value" selected>@pm.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@pm.Value">@pm.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Notes (optional)</label>
+                        <input type="text" id="paybackNotes" class="form-control form-control-sm" placeholder="e.g. Check #12345" />
+                    </div>
+                </div>
 
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary">Save Payback</button>
-                        <a class="btn btn-outline-light ms-2" asp-action="Index">Cancel</a>
+                <hr>
+
+                <!-- Order Selection -->
+                <h6 class="mb-3">Select Orders to Pay</h6>
+                <div id="paybackOrders">
+                    <div class="row align-items-end mb-2 payback-order-row" data-index="0">
+                        <div class="col-md-7">
+                            <label class="form-label">Order</label>
+                            <select class="form-select form-select-sm payback-order-select">
+                                <option value="">-- select order --</option>
+                                @foreach (var order in Model.Orders)
+                                {
+                                    <option value="@order.Value" data-amount="@Model.OrderAmounts.GetValueOrDefault(order.Value, 0)">@order.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Amount</label>
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger payback-remove-row" disabled>
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
                     </div>
-                </form>
+                </div>
+
+                <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="paybackAddOrder">
+                    <i class="fa fa-plus me-1"></i> Add Another Order
+                </button>
+
+                <hr>
+
+                <!-- Total and Submit -->
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <p class="mb-0"><strong>Total Payment:</strong> <span id="paybackTotal" class="fs-4 text-primary fw-bold">$0.00</span></p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a class="btn btn-outline-light me-2" asp-action="Index">Cancel</a>
+                        <button type="button" class="btn btn-primary" id="paybackSubmit">
+                            <i class="fa fa-save me-1"></i> Record Payment
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        var orderOptionsHtml = document.querySelector('.payback-order-select').innerHTML;
+
+        // ── Auto-fill amount when order selected ──
+        document.getElementById('paybackOrders').addEventListener('change', function (e) {
+            if (e.target.classList.contains('payback-order-select')) {
+                var row = e.target.closest('.payback-order-row');
+                var amountInput = row.querySelector('.payback-amount');
+                var opt = e.target.options[e.target.selectedIndex];
+                var amount = parseFloat(opt?.dataset?.amount) || 0;
+                amountInput.value = amount > 0 ? amount.toFixed(2) : '';
+                recalcTotal();
+            }
+        });
+
+        document.getElementById('paybackOrders').addEventListener('input', function (e) {
+            if (e.target.classList.contains('payback-amount')) {
+                recalcTotal();
+            }
+        });
+
+        function recalcTotal() {
+            var total = 0;
+            document.querySelectorAll('.payback-order-row').forEach(function (row) {
+                var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
+                total += amount;
+            });
+            document.getElementById('paybackTotal').textContent = '$' + total.toFixed(2);
+        }
+
+        // ── Add order row ──
+        document.getElementById('paybackAddOrder').addEventListener('click', function () {
+            var container = document.getElementById('paybackOrders');
+            var idx = container.querySelectorAll('.payback-order-row').length;
+            var div = document.createElement('div');
+            div.className = 'row align-items-end mb-2 payback-order-row';
+            div.dataset.index = idx;
+            div.innerHTML =
+                '<div class="col-md-7"><select class="form-select form-select-sm payback-order-select">' + orderOptionsHtml + '</select></div>' +
+                '<div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" /></div>' +
+                '<div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger payback-remove-row"><i class="fa fa-times"></i></button></div>';
+            container.appendChild(div);
+            updateRemoveButtons();
+        });
+
+        // ── Remove order row ──
+        document.getElementById('paybackOrders').addEventListener('click', function (e) {
+            var btn = e.target.closest('.payback-remove-row');
+            if (!btn) return;
+            btn.closest('.payback-order-row').remove();
+            updateRemoveButtons();
+            recalcTotal();
+        });
+
+        function updateRemoveButtons() {
+            var rows = document.querySelectorAll('.payback-order-row');
+            rows.forEach(function (row) {
+                row.querySelector('.payback-remove-row').disabled = rows.length <= 1;
+            });
+        }
+
+        // ── Submit payment ──
+        document.getElementById('paybackSubmit').addEventListener('click', function () {
+            var items = [];
+            document.querySelectorAll('.payback-order-row').forEach(function (row) {
+                var orderId = row.querySelector('.payback-order-select').value;
+                var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
+                if (orderId && amount > 0) {
+                    items.push({ orderId: orderId, amount: amount });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('Select at least one order and enter an amount.');
+                return;
+            }
+
+            fetch('@Url.Action("CreateMultiple", "Paybacks")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({
+                    paidAt: document.getElementById('paybackDate').value,
+                    method: document.getElementById('paybackMethod').value,
+                    notes: document.getElementById('paybackNotes').value || null,
+                    items: items
+                })
+            }).then(function (r) {
+                if (r.ok) window.location.href = '@Url.Action("Index", "Paybacks")';
+                else r.json().then(function (d) { alert(d.error || 'Failed to record payment.'); });
+            });
+        });
+    </script>
 }

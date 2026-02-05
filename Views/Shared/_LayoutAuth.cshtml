@@ -1,7 +1,9 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <partial name="YashAdmin/_Meta" />
+    <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
     <title>@ViewData["Title"] - GS Cookie Order Tracker</title>
     <!-- Favicon icon -->
     <link rel="shortcut icon" type="image/png" href="~/yashadmin/images/favicon.png">

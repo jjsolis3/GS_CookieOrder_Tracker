@@ -97,7 +97,14 @@
                                     <select name="LineItems[@i].InventorySource" class="form-select inv-source-select">
                                         @foreach (var s in Model.InventorySources)
                                         {
-                                            <option value="@s.Value" selected="@(s.Value == Model.LineItems[i].InventorySource)">@s.Text</option>
+                                            if (s.Value == Model.LineItems[i].InventorySource)
+                                            {
+                                                <option value="@s.Value" selected>@s.Text</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@s.Value">@s.Text</option>
+                                            }
                                         }
                                     </select>
                                 </div>
@@ -156,6 +163,7 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         // Cache product options HTML from the first row for reuse
         var productOptionsHtml = document.querySelector('.line-item .product-select').innerHTML;
         var invSourceOptionsHtml = document.querySelector('.inv-source-select') ? document.querySelector('.inv-source-select').innerHTML : '<option value="Personal">Personal</option><option value="Troop">Troop</option>';
@@ -233,7 +241,7 @@
             document.getElementById('custEmail').value = '';
             document.getElementById('custPhone').value = '';
             document.getElementById('custModalError').classList.add('d-none');
-            var modal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('newCustomerModal'));
             modal.show();
         });
 
@@ -246,7 +254,7 @@
             }
             fetch('@Url.Action("QuickCreate", "Customers")', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                 body: JSON.stringify({
                     name: name,
                     email: document.getElementById('custEmail').value.trim() || null,

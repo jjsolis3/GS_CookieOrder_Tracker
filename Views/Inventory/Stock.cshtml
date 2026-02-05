@@ -4,6 +4,7 @@
     ViewData["Title"] = "Inventory Stock";
 }
 
+<!-- INVENTORY KPI's -->
 <div class="row">
     <div class="col-xl-3 col-sm-6">
         <div class="card">
@@ -63,10 +64,17 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title">Stock by Product</h4>
-                <a class="btn btn-warning btn-sm" asp-action="Return">
-                    <i class="fa fa-undo me-1"></i> Return Product
-                </a>
+                <h4 class="card-title">Stock by Product</h4>      
+                <div class="justify-content-evenly align-content-center">
+                    <!-- Add Inventory Button -->
+                    <a class="btn btn-warning btn-sm" asp-action="Create">
+                        <i class="fa fa-truck text-success me-1"></i> Add Product
+                    </a>
+                    <!-- Returns Inventory Button -->
+                    <a class="btn btn-warning btn-sm" asp-action="Return">
+                        <i class="fa fa-undo text-danger me-1"></i> Return Product
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">

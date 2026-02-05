@@ -34,6 +34,7 @@ public class TopSellerRow
 
 public class RecentOrderRow
 {
+    public Guid OrderId { get; set; }
     public DateTime OrderedAt { get; set; }
     public string? CustomerName { get; set; }
     public string? OrderType { get; set; }
