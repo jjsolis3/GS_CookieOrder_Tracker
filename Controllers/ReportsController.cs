@@ -201,36 +201,57 @@ public class ReportsController : Controller
         var fromUtc = DateTime.SpecifyKind(fromDate.Date, DateTimeKind.Utc);
         var toUtc = DateTime.SpecifyKind(toDate.Date.AddDays(1), DateTimeKind.Utc);
 
-        // Get inventory batches
+        // Get inventory batches with their receipts
         var batches = await _dbContext.InventoryBatches
-            .Include(b => b.Product)
-            .Where(b => b.ReceivedAt >= fromUtc && b.ReceivedAt < toUtc)
-            .OrderByDescending(b => b.ReceivedAt)
+            .Include(b => b.GirlScout)
+            .Include(b => b.Receipts).ThenInclude(r => r.Product)
+            .OrderByDescending(b => b.PickupDate)
             .ToListAsync();
 
-        // Get current stock levels
-        var currentStock = await _dbContext.Products
-            .Where(p => p.Active)
-            .OrderBy(p => p.SortOrder)
-            .ThenBy(p => p.Name)
-            .Select(p => new ProductStockLevel
-            {
-                ProductId = p.Id,
-                ProductName = p.Name,
-                CurrentStock = _dbContext.InventoryBatches
-                    .Where(b => b.ProductId == p.Id)
-                    .Sum(b => b.QuantityBoxes - b.QuantitySold - b.QuantityReturned),
-                TotalReceived = _dbContext.InventoryBatches
-                    .Where(b => b.ProductId == p.Id && b.ReceivedAt >= fromUtc && b.ReceivedAt < toUtc)
-                    .Sum(b => b.QuantityBoxes),
-                TotalSold = _dbContext.InventoryBatches
-                    .Where(b => b.ProductId == p.Id && b.ReceivedAt >= fromUtc && b.ReceivedAt < toUtc)
-                    .Sum(b => b.QuantitySold),
-                TotalReturned = _dbContext.InventoryBatches
-                    .Where(b => b.ProductId == p.Id && b.ReceivedAt >= fromUtc && b.ReceivedAt < toUtc)
-                    .Sum(b => b.QuantityReturned)
-            })
+        // Get inventory receipts for the period
+        var receiptsInPeriod = await _dbContext.InventoryReceipts
+            .Include(r => r.Product)
+            .Where(r => r.ReceivedAt >= fromUtc && r.ReceivedAt < toUtc)
             .ToListAsync();
+
+        // Get sold boxes (from order line items)
+        var soldByProduct = await _dbContext.OrderLineItems
+            .Where(li => li.InventorySource == "Personal")
+            .GroupBy(li => li.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
+            .ToListAsync();
+
+        // Get returned boxes
+        var returnedByProduct = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * (r.Product != null ? r.Product.BoxesPerCase : 12)) })
+            .ToListAsync();
+
+        // Get all received boxes
+        var receivedByProduct = await _dbContext.InventoryReceipts
+            .Include(r => r.Product)
+            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
+            .ToListAsync();
+
+        // Calculate current stock levels
+        var currentStock = receivedByProduct.Select(r =>
+        {
+            var sold = soldByProduct.FirstOrDefault(s => s.ProductId == r.ProductId)?.Boxes ?? 0;
+            var returned = returnedByProduct.FirstOrDefault(s => s.ProductId == r.ProductId)?.Boxes ?? 0;
+            var receivedInPeriod = receiptsInPeriod.Where(ri => ri.ProductId == r.ProductId).Sum(ri => ri.QuantityBoxes + ri.QuantityCases * (ri.Product?.BoxesPerCase ?? 12));
+
+            return new ProductStockLevel
+            {
+                ProductId = r.ProductId,
+                ProductName = r.Name,
+                CurrentStock = r.Boxes - sold - returned,
+                TotalReceived = receivedInPeriod,
+                TotalSold = sold,
+                TotalReturned = returned
+            };
+        }).OrderBy(s => s.ProductName).ToList();
 
         var model = new InventoryReportViewModel
         {
@@ -238,9 +259,9 @@ public class ReportsController : Controller
             DateTo = toDate,
             Batches = batches,
             StockLevels = currentStock,
-            TotalReceived = batches.Sum(b => b.QuantityBoxes),
-            TotalSold = batches.Sum(b => b.QuantitySold),
-            TotalReturned = batches.Sum(b => b.QuantityReturned),
+            TotalReceived = receiptsInPeriod.Sum(r => r.QuantityBoxes + r.QuantityCases * (r.Product?.BoxesPerCase ?? 12)),
+            TotalSold = soldByProduct.Sum(s => s.Boxes),
+            TotalReturned = returnedByProduct.Sum(r => r.Boxes),
             GeneratedAt = DateTime.Now
         };
 
@@ -251,7 +272,8 @@ public class ReportsController : Controller
     public async Task<IActionResult> InventoryReceipt(Guid id)
     {
         var batch = await _dbContext.InventoryBatches
-            .Include(b => b.Product)
+            .Include(b => b.GirlScout)
+            .Include(b => b.Receipts).ThenInclude(r => r.Product)
             .FirstOrDefaultAsync(b => b.Id == id);
 
         if (batch == null) return NotFound();
@@ -275,9 +297,10 @@ public class ReportsController : Controller
             return BadRequest("No valid batch IDs provided.");
 
         var batches = await _dbContext.InventoryBatches
-            .Include(b => b.Product)
+            .Include(b => b.GirlScout)
+            .Include(b => b.Receipts).ThenInclude(r => r.Product)
             .Where(b => batchIds.Contains(b.Id))
-            .OrderBy(b => b.ReceivedAt)
+            .OrderByDescending(b => b.PickupDate)
             .ToListAsync();
 
         if (!batches.Any())

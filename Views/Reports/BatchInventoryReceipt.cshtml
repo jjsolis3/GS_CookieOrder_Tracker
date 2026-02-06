@@ -21,7 +21,7 @@
             padding: 20px;
         }
         .receipt {
-            max-width: 500px;
+            max-width: 550px;
             margin: 0 auto 30px auto;
             background: white;
             padding: 30px;
@@ -73,55 +73,55 @@
         .detail-row .value {
             font-weight: bold;
         }
-        .product-highlight {
+        .batch-summary {
             background: #e1f5fe;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
             text-align: center;
         }
-        .product-highlight .name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #0277bd;
-            margin-bottom: 10px;
-        }
-        .product-highlight .quantity {
+        .batch-summary .total {
             font-size: 36px;
             font-weight: bold;
             color: #17a2b8;
         }
-        .product-highlight .quantity-label {
+        .batch-summary .total-label {
             font-size: 12px;
             color: #666;
             text-transform: uppercase;
         }
-        .status-grid {
-            display: flex;
-            gap: 10px;
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
             margin: 20px 0;
+            font-size: 12px;
         }
-        .status-box {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            border-radius: 5px;
+        .products-table th {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
         }
-        .status-box.received { background: #e8f5e9; }
-        .status-box.sold { background: #fff3e0; }
-        .status-box.remaining { background: #e1f5fe; }
-        .status-box .value {
-            font-size: 20px;
+        .products-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .products-table .text-center { text-align: center; }
+        .products-table .text-right { text-align: right; }
+        .products-table .total-row {
+            background: #e1f5fe;
             font-weight: bold;
         }
-        .status-box.received .value { color: #2e7d32; }
-        .status-box.sold .value { color: #e65100; }
-        .status-box.remaining .value { color: #0277bd; }
-        .status-box .label {
-            font-size: 10px;
-            color: #666;
-            text-transform: uppercase;
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
         }
+        .status-received { background: #c8e6c9; color: #2e7d32; }
+        .status-pending { background: #fff9c4; color: #f9a825; }
         .verification {
             background: #fffde7;
             border: 2px dashed #ffc107;
@@ -195,7 +195,7 @@
             body { background: white; padding: 0; }
             .receipt { box-shadow: none; max-width: 100%; margin: 0; }
             .print-buttons { display: none; }
-            .product-highlight, .status-box, .verification { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .batch-summary, .status-badge, .verification, .products-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -212,8 +212,9 @@
 
     @foreach (var batch in Model)
     {
-        var remaining = batch.QuantityBoxes - batch.QuantitySold - batch.QuantityReturned;
         var receiptNumber = batch.Id.ToString().Substring(0, 8).ToUpper();
+        var totalValue = batch.Receipts.Sum(r => r.QuantityBoxes * (r.Product?.PricePerBox ?? 0));
+        var statusClass = batch.Status == "Received" ? "status-received" : "status-pending";
 
         <div class="receipt">
             <div class="header">
@@ -226,46 +227,62 @@
                 <div class="value">@receiptNumber</div>
             </div>
 
-            <div class="product-highlight">
-                <div class="name">@batch.Product?.Name</div>
-                <div class="quantity">@batch.QuantityBoxes</div>
-                <div class="quantity-label">Boxes Received</div>
+            <div class="batch-summary">
+                <div class="total">@batch.TotalBoxes</div>
+                <div class="total-label">Total Boxes Received</div>
             </div>
 
             <div class="detail-row">
-                <span class="label">Date Received</span>
-                <span class="value">@batch.ReceivedAt.ToLocalTime().ToString("MMMM d, yyyy")</span>
+                <span class="label">Pickup Date</span>
+                <span class="value">@(batch.PickupDate?.ToString("MMMM d, yyyy") ?? "N/A")</span>
             </div>
             <div class="detail-row">
-                <span class="label">Time</span>
-                <span class="value">@batch.ReceivedAt.ToLocalTime().ToString("h:mm tt")</span>
+                <span class="label">Batch Type</span>
+                <span class="value">@batch.BatchType</span>
             </div>
-            @if (batch.Product != null)
-            {
-                <div class="detail-row">
-                    <span class="label">Price per Box</span>
-                    <span class="value">@batch.Product.PricePerBox.ToString("C")</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Total Value</span>
-                    <span class="value">@((batch.QuantityBoxes * batch.Product.PricePerBox).ToString("C"))</span>
-                </div>
-            }
+            <div class="detail-row">
+                <span class="label">Status</span>
+                <span class="value">
+                    <span class="status-badge @statusClass">@batch.Status</span>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Girl Scout</span>
+                <span class="value">@(batch.GirlScout != null ? $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}" : "Unassigned")</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Total Value</span>
+                <span class="value">@totalValue.ToString("C")</span>
+            </div>
 
-            <div class="status-grid">
-                <div class="status-box received">
-                    <div class="value">@batch.QuantityBoxes</div>
-                    <div class="label">Received</div>
-                </div>
-                <div class="status-box sold">
-                    <div class="value">@batch.QuantitySold</div>
-                    <div class="label">Sold</div>
-                </div>
-                <div class="status-box remaining">
-                    <div class="value">@remaining</div>
-                    <div class="label">Remaining</div>
-                </div>
-            </div>
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-center">Boxes</th>
+                        <th class="text-center">Cases</th>
+                        <th class="text-right">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var receipt in batch.Receipts)
+                    {
+                        var lineValue = receipt.QuantityBoxes * (receipt.Product?.PricePerBox ?? 0);
+                        <tr>
+                            <td><strong>@receipt.Product?.Name</strong></td>
+                            <td class="text-center">@receipt.QuantityBoxes</td>
+                            <td class="text-center">@receipt.QuantityCases</td>
+                            <td class="text-right">@lineValue.ToString("C")</td>
+                        </tr>
+                    }
+                    <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td class="text-center"><strong>@batch.Receipts.Sum(r => r.QuantityBoxes)</strong></td>
+                        <td class="text-center"><strong>@batch.Receipts.Sum(r => r.QuantityCases)</strong></td>
+                        <td class="text-right"><strong>@totalValue.ToString("C")</strong></td>
+                    </tr>
+                </tbody>
+            </table>
 
             @if (!string.IsNullOrEmpty(batch.Notes))
             {
@@ -277,7 +294,10 @@
             <div class="verification">
                 <h4>Physical Count Verification</h4>
                 <div class="checklist">
-                    <div><span class="checkbox"></span> Counted @batch.QuantityBoxes boxes of @batch.Product?.Name</div>
+                    @foreach (var receipt in batch.Receipts)
+                    {
+                        <div><span class="checkbox"></span> Counted @receipt.QuantityBoxes boxes of @receipt.Product?.Name</div>
+                    }
                     <div><span class="checkbox"></span> Verified packaging is intact</div>
                     <div><span class="checkbox"></span> Stored in proper location</div>
                 </div>

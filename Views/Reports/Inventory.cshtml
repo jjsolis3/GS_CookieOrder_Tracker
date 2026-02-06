@@ -139,6 +139,18 @@
             cursor: pointer;
             text-decoration: none;
         }
+        .batch-row { background: #f8f9fa; }
+        .batch-row td { font-weight: bold; }
+        .receipt-row td { padding-left: 25px; font-size: 10px; }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        .status-received { background: #c8e6c9; color: #2e7d32; }
+        .status-pending { background: #fff9c4; color: #f9a825; }
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -222,9 +234,9 @@
                 <tr>
                     <th>Product</th>
                     <th class="text-center">Current Stock</th>
-                    <th class="text-center">Received (Period)</th>
-                    <th class="text-center">Sold (Period)</th>
-                    <th class="text-center">Returned (Period)</th>
+                    <th class="text-center">Total Received</th>
+                    <th class="text-center">Total Sold</th>
+                    <th class="text-center">Total Returned</th>
                 </tr>
             </thead>
             <tbody>
@@ -242,32 +254,31 @@
             </tbody>
         </table>
 
-        <div class="section-title">Inventory Batches Received</div>
+        <div class="section-title">Inventory Batches</div>
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Product</th>
-                    <th class="text-center">Received</th>
-                    <th class="text-center">Sold</th>
-                    <th class="text-center">Returned</th>
-                    <th class="text-center">Remaining</th>
-                    <th>Notes</th>
+                    <th>Pickup Date</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Girl Scout</th>
+                    <th class="text-center">Total Boxes</th>
+                    <th>Products</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var batch in Model.Batches)
                 {
-                    var remaining = batch.QuantityBoxes - batch.QuantitySold - batch.QuantityReturned;
+                    var statusClass = batch.Status == "Received" ? "status-received" : "status-pending";
+                    var productList = string.Join(", ", batch.Receipts.Select(r => $"{r.Product?.Name ?? "?"} ({r.QuantityBoxes})"));
                     <tr>
-                        <td>@batch.ReceivedAt.ToString("MM/dd/yyyy")</td>
-                        <td><strong>@batch.Product?.Name</strong></td>
-                        <td class="text-center">@batch.QuantityBoxes</td>
-                        <td class="text-center">@batch.QuantitySold</td>
-                        <td class="text-center">@batch.QuantityReturned</td>
-                        <td class="text-center"><strong>@remaining</strong></td>
-                        <td>@batch.Notes</td>
+                        <td>@(batch.PickupDate?.ToString("MM/dd/yyyy") ?? "N/A")</td>
+                        <td>@batch.BatchType</td>
+                        <td><span class="status-badge @statusClass">@batch.Status</span></td>
+                        <td>@(batch.GirlScout != null ? $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}" : "Unassigned")</td>
+                        <td class="text-center"><strong>@batch.TotalBoxes</strong></td>
+                        <td style="font-size:10px">@productList</td>
                         <td>
                             <a href="@Url.Action("InventoryReceipt", "Reports", new { id = batch.Id })"
                                target="_blank" class="batch-receipt-btn">Receipt</a>

@@ -206,9 +206,30 @@
                 <div>
                     <label>Group By</label>
                     <select name="groupBy">
-                        <option value="day" @(Model.GroupBy == "day" ? "selected" : "")>Day</option>
-                        <option value="week" @(Model.GroupBy == "week" ? "selected" : "")>Week</option>
-                        <option value="month" @(Model.GroupBy == "month" ? "selected" : "")>Month</option>
+                        @if (Model.GroupBy == "day")
+                        {
+                            <option value="day" selected>Day</option>
+                        }
+                        else
+                        {
+                            <option value="day">Day</option>
+                        }
+                        @if (Model.GroupBy == "week")
+                        {
+                            <option value="week" selected>Week</option>
+                        }
+                        else
+                        {
+                            <option value="week">Week</option>
+                        }
+                        @if (Model.GroupBy == "month")
+                        {
+                            <option value="month" selected>Month</option>
+                        }
+                        else
+                        {
+                            <option value="month">Month</option>
+                        }
                     </select>
                 </div>
                 <button type="submit">Update</button>
