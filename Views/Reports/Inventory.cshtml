@@ -1,0 +1,296 @@
+@model GS_CookieOrder_Tracker.Models.InventoryReportViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .report {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #17a2b8;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 22px;
+            color: #17a2b8;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 13px;
+        }
+        .date-filter {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .date-filter form {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        .date-filter label {
+            font-size: 11px;
+            color: #666;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .date-filter input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .date-filter button {
+            padding: 6px 15px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .summary-cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .summary-card {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-card.received { background: #e1f5fe; }
+        .summary-card.sold { background: #e8f5e9; }
+        .summary-card.returned { background: #fff3e0; }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .summary-card.received .value { color: #0277bd; }
+        .summary-card.sold .value { color: #2e7d32; }
+        .summary-card.returned .value { color: #e65100; }
+        .summary-card .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin: 25px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 15px;
+        }
+        th {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover { background: #e1f5fe; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .stock-low { background: #ffebee; }
+        .stock-ok { background: #e8f5e9; }
+        .batch-receipt-btn {
+            font-size: 10px;
+            padding: 2px 8px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .batch-row { background: #f8f9fa; }
+        .batch-row td { font-weight: bold; }
+        .receipt-row td { padding-left: 25px; font-size: 10px; }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        .status-received { background: #c8e6c9; color: #2e7d32; }
+        .status-pending { background: #fff9c4; color: #f9a825; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 10px;
+        }
+        .print-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .print-buttons button, .print-buttons a {
+            padding: 10px 20px;
+            margin: 0 5px;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-print { background: #17a2b8; color: white; }
+        .btn-back { background: #666; color: white; }
+
+        @@media print {
+            body { background: white; padding: 0; }
+            .report { box-shadow: none; padding: 15px; max-width: 100%; }
+            .print-buttons, .date-filter, .batch-receipt-btn { display: none; }
+            .summary-card, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-buttons">
+        <button class="btn-print" onclick="window.print()">Print Report</button>
+        <a href="@Url.Action("Index", "Reports")" class="btn-back">Back to Reports</a>
+    </div>
+
+    <div class="report">
+        <div class="header">
+            <h1>Inventory Report</h1>
+            <div class="subtitle">
+                @Model.DateFrom.ToString("MMM d, yyyy") - @Model.DateTo.ToString("MMM d, yyyy") |
+                Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")
+            </div>
+        </div>
+
+        <div class="date-filter">
+            <form method="get">
+                <div>
+                    <label>From Date</label>
+                    <input type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label>To Date</label>
+                    <input type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+                </div>
+                <button type="submit">Update</button>
+            </form>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card received">
+                <div class="value">@Model.TotalReceived</div>
+                <div class="label">Boxes Received</div>
+            </div>
+            <div class="summary-card sold">
+                <div class="value">@Model.TotalSold</div>
+                <div class="label">Boxes Sold</div>
+            </div>
+            <div class="summary-card returned">
+                <div class="value">@Model.TotalReturned</div>
+                <div class="label">Boxes Returned</div>
+            </div>
+        </div>
+
+        <div class="section-title">Current Stock Levels</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th class="text-center">Current Stock</th>
+                    <th class="text-center">Total Received</th>
+                    <th class="text-center">Total Sold</th>
+                    <th class="text-center">Total Returned</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var stock in Model.StockLevels)
+                {
+                    var rowClass = stock.CurrentStock <= 0 ? "stock-low" : (stock.CurrentStock < 12 ? "" : "stock-ok");
+                    <tr class="@rowClass">
+                        <td><strong>@stock.ProductName</strong></td>
+                        <td class="text-center"><strong>@stock.CurrentStock</strong></td>
+                        <td class="text-center">@stock.TotalReceived</td>
+                        <td class="text-center">@stock.TotalSold</td>
+                        <td class="text-center">@stock.TotalReturned</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="section-title">Inventory Batches</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Pickup Date</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Girl Scout</th>
+                    <th class="text-center">Total Boxes</th>
+                    <th>Products</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var batch in Model.Batches)
+                {
+                    var statusClass = batch.Status == "Received" ? "status-received" : "status-pending";
+                    var productList = string.Join(", ", batch.Receipts.Select(r => $"{r.Product?.Name ?? "?"} ({r.QuantityBoxes})"));
+                    <tr>
+                        <td>@(batch.PickupDate?.ToString("MM/dd/yyyy") ?? "N/A")</td>
+                        <td>@batch.BatchType</td>
+                        <td><span class="status-badge @statusClass">@batch.Status</span></td>
+                        <td>@(batch.GirlScout != null ? $"{batch.GirlScout.FirstName} {batch.GirlScout.LastName}" : "Unassigned")</td>
+                        <td class="text-center"><strong>@batch.TotalBoxes</strong></td>
+                        <td style="font-size:10px">@productList</td>
+                        <td>
+                            <a href="@Url.Action("InventoryReceipt", "Reports", new { id = batch.Id })"
+                               target="_blank" class="batch-receipt-btn">Receipt</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>Girl Scout Cookie Order Tracker - Inventory Report</p>
+        </div>
+    </div>
+</body>
+</html>

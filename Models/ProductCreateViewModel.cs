@@ -38,4 +38,7 @@ public class ProductCreateViewModel
 
     [MaxLength(100)]
     public string? Barcode { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int SortOrder { get; set; } = 0;
 }

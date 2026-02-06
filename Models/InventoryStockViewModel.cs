@@ -1,3 +1,5 @@
+using GS_CookieOrder_Tracker.Data;
+
 namespace GS_CookieOrder_Tracker.Models;
 
 public class InventoryStockViewModel
@@ -7,6 +9,9 @@ public class InventoryStockViewModel
     public int TotalBoxesSold { get; set; }
     public int TotalBoxesReturned { get; set; }
     public int TotalBoxesOnHand { get; set; }
+
+    // Inventory batches (receipts)
+    public List<InventoryBatch> Batches { get; set; } = new();
 }
 
 public class ProductStockRow

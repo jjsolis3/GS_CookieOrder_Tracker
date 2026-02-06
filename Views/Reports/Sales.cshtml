@@ -1,0 +1,352 @@
+@model GS_CookieOrder_Tracker.Models.SalesReportViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sales Summary Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .report {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #28a745;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 22px;
+            color: #28a745;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 13px;
+        }
+        .date-filter {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .date-filter form {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        .date-filter label {
+            font-size: 11px;
+            color: #666;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .date-filter input, .date-filter select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .date-filter button {
+            padding: 6px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .summary-cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .summary-card {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            background: #e8f5e9;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .summary-card .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin: 25px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .two-columns {
+            display: flex;
+            gap: 30px;
+        }
+        .two-columns > div {
+            flex: 1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 15px;
+        }
+        th {
+            background: #28a745;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover { background: #f1f8e9; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .total-row {
+            background: #e8f5e9;
+            font-weight: bold;
+        }
+        .order-type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .badge-direct { background: #e3f2fd; color: #1565c0; }
+        .badge-online { background: #e1f5fe; color: #0277bd; }
+        .badge-booth { background: #e8f5e9; color: #2e7d32; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 10px;
+        }
+        .print-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .print-buttons button, .print-buttons a {
+            padding: 10px 20px;
+            margin: 0 5px;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-print { background: #28a745; color: white; }
+        .btn-back { background: #666; color: white; }
+
+        @@media print {
+            body { background: white; padding: 0; }
+            .report { box-shadow: none; padding: 15px; max-width: 100%; }
+            .print-buttons, .date-filter { display: none; }
+            .summary-card, th, .order-type-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .two-columns { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-buttons">
+        <button class="btn-print" onclick="window.print()">Print Report</button>
+        <a href="@Url.Action("Index", "Reports")" class="btn-back">Back to Reports</a>
+    </div>
+
+    <div class="report">
+        <div class="header">
+            <h1>Sales Summary Report</h1>
+            <div class="subtitle">
+                @Model.DateFrom.ToString("MMM d, yyyy") - @Model.DateTo.ToString("MMM d, yyyy") |
+                Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")
+            </div>
+        </div>
+
+        <div class="date-filter">
+            <form method="get">
+                <div>
+                    <label>From Date</label>
+                    <input type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label>To Date</label>
+                    <input type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+                </div>
+                <div>
+                    <label>Group By</label>
+                    <select name="groupBy">
+                        @if (Model.GroupBy == "day")
+                        {
+                            <option value="day" selected>Day</option>
+                        }
+                        else
+                        {
+                            <option value="day">Day</option>
+                        }
+                        @if (Model.GroupBy == "week")
+                        {
+                            <option value="week" selected>Week</option>
+                        }
+                        else
+                        {
+                            <option value="week">Week</option>
+                        }
+                        @if (Model.GroupBy == "month")
+                        {
+                            <option value="month" selected>Month</option>
+                        }
+                        else
+                        {
+                            <option value="month">Month</option>
+                        }
+                    </select>
+                </div>
+                <button type="submit">Update</button>
+            </form>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="value">@Model.TotalOrders</div>
+                <div class="label">Total Orders</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">@Model.TotalBoxes</div>
+                <div class="label">Boxes Sold</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">@Model.TotalRevenue.ToString("C")</div>
+                <div class="label">Total Revenue</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">@Model.TotalCollected.ToString("C")</div>
+                <div class="label">Collected</div>
+            </div>
+        </div>
+
+        <div class="two-columns">
+            <div>
+                <div class="section-title">Sales by Product</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-center">Boxes</th>
+                            <th class="text-right">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in Model.ProductBreakdown)
+                        {
+                            <tr>
+                                <td><strong>@product.ProductName</strong></td>
+                                <td class="text-center">@product.TotalBoxes</td>
+                                <td class="text-right">@product.TotalValue.ToString("C")</td>
+                            </tr>
+                        }
+                        <tr class="total-row">
+                            <td><strong>TOTAL</strong></td>
+                            <td class="text-center"><strong>@Model.TotalBoxes</strong></td>
+                            <td class="text-right"><strong>@Model.TotalRevenue.ToString("C")</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <div class="section-title">Sales by Order Type</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th class="text-center">Orders</th>
+                            <th class="text-center">Boxes</th>
+                            <th class="text-right">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var type in Model.ByOrderType)
+                        {
+                            var badgeClass = type.OrderType switch {
+                                "Direct Sale" => "badge-direct",
+                                "Online Delivery" => "badge-online",
+                                "Booth Sale" => "badge-booth",
+                                _ => ""
+                            };
+                            <tr>
+                                <td><span class="order-type-badge @badgeClass">@type.OrderType</span></td>
+                                <td class="text-center">@type.OrderCount</td>
+                                <td class="text-center">@type.TotalBoxes</td>
+                                <td class="text-right">@type.TotalRevenue.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section-title">Sales Over Time (@Model.GroupBy.ToUpper())</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>@(Model.GroupBy == "day" ? "Date" : Model.GroupBy == "week" ? "Week Starting" : "Month")</th>
+                    <th class="text-center">Orders</th>
+                    <th class="text-center">Boxes</th>
+                    <th class="text-right">Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var period in Model.TimeBreakdown)
+                {
+                    var label = Model.GroupBy switch {
+                        "week" => $"Week of {period.Period:MMM d}",
+                        "month" => period.Period.ToString("MMMM yyyy"),
+                        _ => period.Period.ToString("MM/dd/yyyy")
+                    };
+                    <tr>
+                        <td>@label</td>
+                        <td class="text-center">@period.OrderCount</td>
+                        <td class="text-center">@period.TotalBoxes</td>
+                        <td class="text-right">@period.TotalRevenue.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>Girl Scout Cookie Order Tracker - Sales Summary Report</p>
+        </div>
+    </div>
+</body>
+</html>

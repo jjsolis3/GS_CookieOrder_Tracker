@@ -1,0 +1,180 @@
+@model GS_CookieOrder_Tracker.Models.BoothHistoryViewModel
+
+@{
+    ViewData["Title"] = "Booth Session History";
+}
+
+<!-- ═══════════ KPI CARDS ═══════════ -->
+<div class="row">
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-primary mb-0">@Model.TotalSessions</h4>
+                <small class="text-muted">Sessions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-success mb-0">@Model.TotalBoxesSold</h4>
+                <small class="text-muted">Total Boxes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-info mb-0">@Model.TotalRevenue.ToString("C")</h4>
+                <small class="text-muted">Total Revenue</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-warning mb-0">@Model.AvgBoxesPerSession.ToString("F0")</h4>
+                <small class="text-muted">Avg Boxes/Session</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-danger mb-0">@Model.AvgRevenuePerSession.ToString("C")</h4>
+                <small class="text-muted">Avg Rev/Session</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card">
+            <div class="card-body text-center py-2">
+                <h4 class="text-secondary mb-0">@Model.ScoutBreakdown.Count</h4>
+                <small class="text-muted">Active Scouts</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ SESSIONS TABLE ═══════════ -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h5 class="card-title mb-0">Booth Sessions</h5>
+        <a href="@Url.Action("Index", "Boothing")" class="btn btn-primary btn-sm">
+            <i class="fa fa-plus me-1"></i> New Session
+        </a>
+    </div>
+    <div class="card-body">
+        @if (!Model.Sessions.Any())
+        {
+            <p class="text-muted text-center py-3">No booth sessions yet. Start one from the Booth Sales page.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th class="text-center">Scouts</th>
+                            <th>Duration</th>
+                            <th class="text-center">Sales</th>
+                            <th class="text-center">Boxes</th>
+                            <th class="text-end">Revenue</th>
+                            <th>Status</th>
+                            <th style="width:70px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Sessions)
+                        {
+                            var isActive = s.EndedAt == null;
+                            var duration = isActive
+                                ? (DateTime.UtcNow - s.StartedAt)
+                                : (s.EndedAt!.Value - s.StartedAt);
+                            var durationText = duration.TotalHours >= 1
+                                ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
+                                : $"{(int)duration.TotalMinutes}m";
+                            <tr>
+                                <td class="text-nowrap">@s.StartedAt.ToString("MMM d, yyyy")</td>
+                                <td>@s.Location</td>
+                                <td class="text-center">@s.ScoutCount</td>
+                                <td>@durationText</td>
+                                <td class="text-center">@s.SaleCount</td>
+                                <td class="text-center"><strong>@s.TotalBoxes</strong></td>
+                                <td class="text-end text-nowrap"><strong>@s.TotalRevenue.ToString("C")</strong></td>
+                                <td>
+                                    @if (isActive)
+                                    {
+                                        <span class="badge badge-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">Ended</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("ExportCsv", "Boothing", new { sessionId = s.Id })" class="btn btn-xs btn-outline-success" title="Export CSV">
+                                        <i class="fa fa-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ═══════════ PER-SCOUT CONTRIBUTION ═══════════ -->
+@if (Model.ScoutBreakdown.Any())
+{
+    <div class="card">
+        <div class="card-header py-2">
+            <h5 class="card-title mb-0">Scout Contributions (All Sessions)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:35px">#</th>
+                            <th>Scout</th>
+                            <th class="text-center">Sales</th>
+                            <th class="text-center">Boxes</th>
+                            <th class="text-end">Revenue</th>
+                            <th style="width:200px">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var rank = 1;
+                            var maxBoxes = Model.ScoutBreakdown.Any() ? Model.ScoutBreakdown.Max(s => s.TotalBoxes) : 1;
+                        }
+                        @foreach (var sc in Model.ScoutBreakdown)
+                        {
+                            var pct = maxBoxes > 0 ? (int)((double)sc.TotalBoxes / maxBoxes * 100) : 0;
+                            <tr>
+                                <td>@rank</td>
+                                <td><strong>@sc.ScoutName</strong></td>
+                                <td class="text-center">@sc.SaleCount</td>
+                                <td class="text-center"><strong>@sc.TotalBoxes</strong></td>
+                                <td class="text-end text-nowrap">@sc.TotalRevenue.ToString("C")</td>
+                                <td>
+                                    <div class="progress" style="height:18px">
+                                        <div class="progress-bar bg-primary" role="progressbar" style="width: @pct%" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">
+                                            @sc.TotalBoxes boxes
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            rank++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

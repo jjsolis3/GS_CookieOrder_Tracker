@@ -223,7 +223,8 @@ public class OrdersController : Controller
 
         var products = await _dbContext.Products
             .Where(p => p.Active)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
             .Select(p => new { p.Id, p.Name, p.PricePerBox })
             .ToListAsync();
 
@@ -355,7 +356,8 @@ public class OrdersController : Controller
 
         var products = await _dbContext.Products
             .Where(p => p.Active)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
             .Select(p => new { p.Id, p.Name, p.PricePerBox })
             .ToListAsync();
 
@@ -385,6 +387,51 @@ public class OrdersController : Controller
             new("Personal", "Personal"),
             new("Troop", "Troop")
         };
+    }
+
+    // ───────── RECEIPT: Print-friendly order view ─────────
+    [HttpGet]
+    public async Task<IActionResult> Receipt(Guid id)
+    {
+        var order = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null) return NotFound();
+
+        return View(order);
+    }
+
+    // ───────── BATCH RECEIPT: Print multiple orders at once ─────────
+    [HttpGet]
+    public async Task<IActionResult> BatchReceipt(string ids)
+    {
+        if (string.IsNullOrEmpty(ids))
+            return BadRequest("No order IDs provided.");
+
+        var orderIds = ids.Split(',')
+            .Select(s => Guid.TryParse(s.Trim(), out var g) ? g : (Guid?)null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList();
+
+        if (!orderIds.Any())
+            return BadRequest("No valid order IDs provided.");
+
+        var orders = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .Where(o => orderIds.Contains(o.Id))
+            .OrderBy(o => o.OrderedAt)
+            .ToListAsync();
+
+        if (!orders.Any())
+            return NotFound("No orders found.");
+
+        return View(orders);
     }
 
     private async Task<List<SelectListItem>> BuildCustomerOptionsAsync()

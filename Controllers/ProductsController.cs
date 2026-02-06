@@ -36,7 +36,7 @@ public class ProductsController : Controller
             else if (status == "inactive") query = query.Where(p => !p.Active);
         }
 
-        var products = await query.OrderBy(p => p.Name).ToListAsync();
+        var products = await query.OrderBy(p => p.SortOrder).ThenBy(p => p.Name).ToListAsync();
 
         ViewBag.SearchTerm = search;
         ViewBag.StatusFilter = status;
@@ -74,6 +74,7 @@ public class ProductsController : Controller
             Cost = model.Cost,
             Reward = model.Reward,
             Barcode = model.Barcode,
+            SortOrder = model.SortOrder,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -105,7 +106,8 @@ public class ProductsController : Controller
             vendor = p.Vendor,
             cost = p.Cost,
             reward = p.Reward,
-            barcode = p.Barcode
+            barcode = p.Barcode,
+            sortOrder = p.SortOrder
         });
     }
 
@@ -128,6 +130,7 @@ public class ProductsController : Controller
         p.Cost = req.Cost;
         p.Reward = req.Reward;
         p.Barcode = req.Barcode;
+        p.SortOrder = req.SortOrder ?? p.SortOrder;
         p.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();
@@ -166,6 +169,7 @@ public class UpdateProductRequest
     public decimal? Cost { get; set; }
     public decimal? Reward { get; set; }
     public string? Barcode { get; set; }
+    public int? SortOrder { get; set; }
 }
 
 public class DeleteProductRequest

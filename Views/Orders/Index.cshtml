@@ -133,9 +133,14 @@
                         <small class="text-muted ms-2">(@Model.TotalFilteredCount found)</small>
                     }
                 </h4>
-                <a class="btn btn-primary btn-sm" asp-action="Create">
-                    <i class="fa fa-plus me-1"></i> New Order
-                </a>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm d-none" id="batchPrintBtn">
+                        <i class="fa fa-print me-1"></i> Print Selected (<span id="selectedCount">0</span>)
+                    </button>
+                    <a class="btn btn-primary btn-sm" asp-action="Create">
+                        <i class="fa fa-plus me-1"></i> New Order
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 @if (!Model.Orders.Any())
@@ -147,6 +152,7 @@
                     <div class="table-responsive">
                         <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
                             <colgroup>
+                                <col style="width:35px">  <!-- Checkbox -->
                                 <col style="width:90px">  <!-- Date -->
                                 <col style="width:100px"> <!-- Type -->
                                 <col style="width:120px"> <!-- Customer -->
@@ -155,10 +161,11 @@
                                 <col style="width:55px">  <!-- Qty -->
                                 <col style="width:80px">  <!-- Total -->
                                 <col style="width:80px">  <!-- Paid -->
-                                <col style="width:75px">  <!-- Actions -->
+                                <col style="width:90px">  <!-- Actions -->
                             </colgroup>
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="selectAllOrders" class="form-check-input" title="Select All" /></th>
                                     <th>Date</th>
                                     <th>Type</th>
                                     <th>Customer</th>
@@ -180,7 +187,14 @@
                                         "Booth Sale" => "badge-success",
                                         _ => "badge-secondary"
                                     };
+                                    var canPrint = order.OrderType != "Booth Sale";
                                     <tr data-order-id="@order.Id">
+                                        <td>
+                                            @if (canPrint)
+                                            {
+                                                <input type="checkbox" class="form-check-input order-select-cb" data-order-id="@order.Id" />
+                                            }
+                                        </td>
                                         <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
                                         <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
                                         <td style="white-space:normal;word-break:break-word">@(order.Customer?.Name ?? "-")</td>
@@ -206,10 +220,16 @@
                                         <td class="text-center">@order.TotalQty</td>
                                         <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
                                         <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
-                                        <td>
+                                        <td class="text-nowrap">
                                             <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
                                                 <i class="fa fa-eye"></i>
                                             </button>
+                                            @if (order.OrderType != "Booth Sale")
+                                            {
+                                                <a href="@Url.Action("Receipt", "Orders", new { id = order.Id })" target="_blank" class="btn btn-xs btn-outline-success ms-1" title="Print Receipt">
+                                                    <i class="fa fa-print"></i>
+                                                </a>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -397,6 +417,9 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <a href="#" target="_blank" class="btn btn-outline-success me-auto d-none" id="mdlPrintBtn">
+                    <i class="fa fa-print me-1"></i> Print Receipt
+                </a>
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" id="mdlSaveBtn">
                     <i class="fa fa-save me-1"></i> Save Changes
@@ -411,6 +434,71 @@
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         var currentOrderId = null;
         var currentOrderData = null;
+
+        // ══════════ BATCH SELECTION & PRINT ══════════
+        var selectedOrders = new Set();
+        var batchPrintBtn = document.getElementById('batchPrintBtn');
+        var selectedCountEl = document.getElementById('selectedCount');
+        var selectAllCb = document.getElementById('selectAllOrders');
+
+        function updateBatchPrintButton() {
+            var count = selectedOrders.size;
+            if (selectedCountEl) selectedCountEl.textContent = count;
+            if (batchPrintBtn) {
+                if (count > 0) {
+                    batchPrintBtn.classList.remove('d-none');
+                } else {
+                    batchPrintBtn.classList.add('d-none');
+                }
+            }
+        }
+
+        // Individual checkbox change
+        document.querySelectorAll('.order-select-cb').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                var orderId = this.dataset.orderId;
+                if (this.checked) {
+                    selectedOrders.add(orderId);
+                } else {
+                    selectedOrders.delete(orderId);
+                }
+                updateBatchPrintButton();
+                // Update "select all" checkbox state
+                var allCbs = document.querySelectorAll('.order-select-cb');
+                var allChecked = Array.from(allCbs).every(function(c) { return c.checked; });
+                if (selectAllCb) selectAllCb.checked = allChecked;
+            });
+        });
+
+        // Select all checkbox
+        if (selectAllCb) {
+            selectAllCb.addEventListener('change', function() {
+                var allCbs = document.querySelectorAll('.order-select-cb');
+                allCbs.forEach(function(cb) {
+                    cb.checked = selectAllCb.checked;
+                    var orderId = cb.dataset.orderId;
+                    if (selectAllCb.checked) {
+                        selectedOrders.add(orderId);
+                    } else {
+                        selectedOrders.delete(orderId);
+                    }
+                });
+                updateBatchPrintButton();
+            });
+        }
+
+        // Batch print button click
+        if (batchPrintBtn) {
+            batchPrintBtn.addEventListener('click', function() {
+                if (selectedOrders.size === 0) {
+                    alert('Please select at least one order to print.');
+                    return;
+                }
+                var ids = Array.from(selectedOrders).join(',');
+                var url = '@Url.Action("BatchReceipt", "Orders")' + '?ids=' + encodeURIComponent(ids);
+                window.open(url, '_blank');
+            });
+        }
 
         // ── Quick status change from table ──
         document.querySelectorAll('.status-select').forEach(function (sel) {
@@ -488,6 +576,15 @@
             });
 
             document.getElementById('mdlAddLineRow').classList.add('d-none');
+
+            // Show/hide print button based on order type (not for Booth Sales)
+            var printBtn = document.getElementById('mdlPrintBtn');
+            if (d.orderType !== 'Booth Sale') {
+                printBtn.classList.remove('d-none');
+                printBtn.href = '@Url.Action("Receipt", "Orders")' + '?id=' + d.id;
+            } else {
+                printBtn.classList.add('d-none');
+            }
         }
 
         document.getElementById('mdlSaveBtn').addEventListener('click', function () {
