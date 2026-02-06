@@ -86,11 +86,11 @@
                                 </div>
                                 <div class="col-md-2 mb-2">
                                     <label class="form-label">Boxes</label>
-                                    <input name="LineItems[@i].QuantityBoxes" type="number" min="1" value="@Model.LineItems[i].QuantityBoxes" class="form-control" />
+                                    <input name="LineItems[@i].QuantityBoxes" type="number" min="1" value="@Model.LineItems[i].QuantityBoxes" class="form-control qty-input" />
                                 </div>
                                 <div class="col-md-2 mb-2">
                                     <label class="form-label">Unit Price</label>
-                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control" readonly />
+                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control unit-price-input" readonly />
                                 </div>
                                 <div class="col-md-2 mb-2 inv-source-col">
                                     <label class="form-label">Inv. Source</label>
@@ -115,6 +115,24 @@
                                 </div>
                             </div>
                         }
+                    </div>
+
+                    <!-- ═══════════ ORDER TOTAL SUMMARY ═══════════ -->
+                    <div class="card bg-light mt-3 mb-3" id="orderTotalCard">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted">Total Boxes:</span>
+                                    <strong id="createTotalBoxes" class="ms-1">0</strong>
+                                    <span class="text-muted ms-3">Items:</span>
+                                    <strong id="createTotalItems" class="ms-1">0</strong>
+                                </div>
+                                <div>
+                                    <span class="text-muted">Order Total:</span>
+                                    <strong id="createOrderTotal" class="ms-1 fs-4 text-primary">$0.00</strong>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-4">
@@ -175,12 +193,53 @@
             var row = selectEl.closest('.line-item');
             var priceInput = row.querySelector('input[name$=".UnitPrice"]');
             if (priceInput) priceInput.value = price;
+            recalcOrderTotal();
+        }
+
+        // Recalculate and display running order total
+        function recalcOrderTotal() {
+            var rows = document.querySelectorAll('#lineItemsContainer .line-item');
+            var totalBoxes = 0, totalPrice = 0, itemCount = 0;
+            rows.forEach(function (row) {
+                var qtyInput = row.querySelector('input[name$=".QuantityBoxes"]');
+                var priceInput = row.querySelector('input[name$=".UnitPrice"]');
+                var qty = qtyInput ? (parseInt(qtyInput.value) || 0) : 0;
+                var price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
+                if (qty > 0 && price > 0) {
+                    totalBoxes += qty;
+                    totalPrice += qty * price;
+                    itemCount++;
+                }
+            });
+            var totalEl = document.getElementById('createOrderTotal');
+            var boxesEl = document.getElementById('createTotalBoxes');
+            var itemsEl = document.getElementById('createTotalItems');
+            if (totalEl) totalEl.textContent = '$' + totalPrice.toFixed(2);
+            if (boxesEl) boxesEl.textContent = totalBoxes;
+            if (itemsEl) itemsEl.textContent = itemCount;
+
+            // Highlight total when non-zero
+            var card = document.getElementById('orderTotalCard');
+            if (card) {
+                if (totalPrice > 0) {
+                    card.style.borderLeft = '4px solid var(--primary)';
+                } else {
+                    card.style.borderLeft = '';
+                }
+            }
         }
 
         // Listen for product changes on all current and future rows (event delegation)
-        document.getElementById('lineItemsContainer').addEventListener('change', function (e) {
+        var lineContainer = document.getElementById('lineItemsContainer');
+        lineContainer.addEventListener('change', function (e) {
             if (e.target.classList.contains('product-select')) {
                 onProductChange(e.target);
+            }
+        });
+        // Listen for quantity changes
+        lineContainer.addEventListener('input', function (e) {
+            if (e.target.name && e.target.name.indexOf('.QuantityBoxes') !== -1) {
+                recalcOrderTotal();
             }
         });
 
@@ -194,14 +253,15 @@
                 '<div class="col-md-4 mb-2"><label class="form-label">Product</label>' +
                 '<select name="LineItems[' + idx + '].ProductId" class="form-select product-select">' + productOptionsHtml + '</select></div>' +
                 '<div class="col-md-2 mb-2"><label class="form-label">Boxes</label>' +
-                '<input name="LineItems[' + idx + '].QuantityBoxes" type="number" min="1" value="1" class="form-control" /></div>' +
+                '<input name="LineItems[' + idx + '].QuantityBoxes" type="number" min="1" value="1" class="form-control qty-input" /></div>' +
                 '<div class="col-md-2 mb-2"><label class="form-label">Unit Price</label>' +
-                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control" readonly /></div>' +
+                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control unit-price-input" readonly /></div>' +
                 '<div class="col-md-2 mb-2 inv-source-col"><label class="form-label">Inv. Source</label>' +
                 '<select name="LineItems[' + idx + '].InventorySource" class="form-select inv-source-select">' + invSourceOptionsHtml + '</select></div>' +
                 '<div class="col-md-2 mb-2"><button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100"><i class="fa fa-trash"></i> Remove</button></div>';
             container.appendChild(div);
             toggleInvSourceVisibility();
+            recalcOrderTotal();
         });
 
         document.addEventListener('click', function (e) {
@@ -209,6 +269,7 @@
                 var row = e.target.closest('.line-item');
                 row.remove();
                 reindexLines();
+                recalcOrderTotal();
             }
         });
 
@@ -244,6 +305,9 @@
             var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('newCustomerModal'));
             modal.show();
         });
+
+        // Initial total calculation on page load
+        recalcOrderTotal();
 
         document.getElementById('custSaveBtn').addEventListener('click', function () {
             var name = document.getElementById('custName').value.trim();

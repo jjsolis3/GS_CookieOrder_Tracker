@@ -348,6 +348,92 @@ public class OrdersController : Controller
         await _dbContext.SaveChangesAsync();
     }
 
+    // ───────── AJAX: Get data for quick-order modal ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetQuickOrderData()
+    {
+        var products = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath })
+            .ToListAsync();
+
+        var customers = await _dbContext.Customers
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync();
+
+        var scouts = await _dbContext.GirlScouts
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .Select(s => new { s.Id, Name = s.FirstName + " " + s.LastName })
+            .ToListAsync();
+
+        return Json(new { products, customers, scouts });
+    }
+
+    // ───────── AJAX: Quick create order (from modal) ─────────
+    [HttpPost]
+    public async Task<IActionResult> QuickCreate([FromBody] QuickCreateOrderRequest req)
+    {
+        if (req.Items == null || req.Items.Count == 0)
+            return BadRequest(new { error = "At least one product is required." });
+
+        var productIds = req.Items.Select(i => i.ProductId).ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var totalQty = req.Items.Sum(i => i.Qty);
+        var totalPrice = req.Items.Sum(i => i.Qty * (products.ContainsKey(i.ProductId) ? products[i.ProductId].PricePerBox : 0));
+
+        var isOnlinePaid = req.OrderType == "Online Delivery";
+        var orderedUtc = DateTime.SpecifyKind(
+            req.OrderDate.HasValue ? req.OrderDate.Value.Date : DateTime.UtcNow.Date,
+            DateTimeKind.Utc);
+
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = req.CustomerId,
+            GirlScoutId = req.GirlScoutId,
+            OrderType = req.OrderType ?? "Direct Sale",
+            PaymentMethod = req.PaymentMethod ?? "Cash",
+            IsOnlinePaid = isOnlinePaid,
+            Status = isOnlinePaid ? "Paid" : "Pending",
+            OrderedAt = orderedUtc,
+            Notes = req.Notes,
+            TotalQty = totalQty,
+            TotalPrice = totalPrice,
+            PaidAmount = isOnlinePaid ? totalPrice : 0m,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Orders.Add(order);
+
+        foreach (var item in req.Items)
+        {
+            if (!products.ContainsKey(item.ProductId) || item.Qty <= 0) continue;
+            var source = req.OrderType == "Booth Sale" ? "Troop" : (req.InventorySource ?? "Personal");
+
+            _dbContext.OrderLineItems.Add(new OrderLineItem
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProductId = item.ProductId,
+                QuantityBoxes = item.Qty,
+                UnitPrice = products[item.ProductId].PricePerBox,
+                InventorySource = source,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true, orderId = order.Id, totalPrice, totalQty });
+    }
+
     // ───────── Dropdown helpers ─────────
     private async Task PopulateDropdowns(OrderCreateViewModel model)
     {
@@ -457,6 +543,10 @@ public class OrdersController : Controller
             .Select(s => new SelectListItem($"{s.FirstName} {s.LastName}", s.Id.ToString()))
             .ToListAsync();
 
+        // Auto-select the first scout as default
+        if (scouts.Any())
+            scouts[0].Selected = true;
+
         scouts.Insert(0, new SelectListItem("Unassigned", ""));
         return scouts;
     }
@@ -488,4 +578,22 @@ public class AddLineItemRequest
 public class RemoveLineItemRequest
 {
     public Guid LineItemId { get; set; }
+}
+
+public class QuickCreateOrderRequest
+{
+    public string? OrderType { get; set; }
+    public Guid? CustomerId { get; set; }
+    public Guid? GirlScoutId { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string? InventorySource { get; set; }
+    public DateTime? OrderDate { get; set; }
+    public string? Notes { get; set; }
+    public List<QuickOrderItem> Items { get; set; } = new();
+}
+
+public class QuickOrderItem
+{
+    public Guid ProductId { get; set; }
+    public int Qty { get; set; }
 }
