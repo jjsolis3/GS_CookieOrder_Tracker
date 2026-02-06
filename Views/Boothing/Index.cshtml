@@ -36,6 +36,33 @@
                         <label class="form-label fw-bold">Notes (optional)</label>
                         <input id="sessionNotes" class="form-control" placeholder="e.g. Troop 774 - Saturday shift" />
                     </div>
+
+                    <!-- Starting Inventory (Troop-provided) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fa fa-boxes me-1"></i> Starting Inventory (Troop-Provided)
+                        </label>
+                        <p class="text-muted small mb-2">
+                            Enter the number of boxes brought to the booth. This helps track what's sold vs. remaining.
+                        </p>
+                        <div id="inventoryInputs" class="border rounded p-2" style="max-height:250px; overflow-y:auto;">
+                            @foreach (var card in Model.ProductCards)
+                            {
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="@(string.IsNullOrEmpty(card.ImagePath) ? "/images/pre.gif" : card.ImagePath)"
+                                             alt="@card.Name" style="width:32px;height:32px;object-fit:contain;border-radius:4px" />
+                                        <span class="small">@card.Name</span>
+                                    </div>
+                                    <input type="number" min="0" value="0"
+                                           class="form-control form-control-sm inventory-input"
+                                           data-product-id="@card.Id"
+                                           style="width:70px" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+
                     <button type="button" class="btn btn-primary w-100 btn-lg" id="startSessionBtn">
                         <i class="fa fa-play me-2"></i> Start Booth Session
                     </button>
@@ -115,6 +142,51 @@
             </div>
         </div>
     </div>
+
+    <!-- ═══════════ BOOTH INVENTORY STATUS ═══════════ -->
+    @if (Model.BoothInventoryItems.Any())
+    {
+        <div class="card mb-3" id="boothInventoryPanel">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fa fa-boxes me-1"></i> Booth Inventory (Troop Stock)
+                </h6>
+                <button type="button" class="btn btn-xs btn-outline-secondary" id="toggleInventoryBtn">
+                    <i class="fa fa-chevron-up" id="inventoryToggleIcon"></i>
+                </button>
+            </div>
+            <div class="card-body py-2" id="boothInventoryBody">
+                <div class="row g-2" id="inventoryStatusGrid">
+                    @foreach (var item in Model.BoothInventoryItems)
+                    {
+                        var percentUsed = item.StartingQuantity > 0
+                            ? (int)((double)item.SoldQuantity / item.StartingQuantity * 100)
+                            : 0;
+                        var barColor = percentUsed >= 90 ? "bg-danger" : percentUsed >= 70 ? "bg-warning" : "bg-success";
+                        var textColor = item.RemainingQuantity <= 0 ? "text-danger" : item.RemainingQuantity <= 5 ? "text-warning" : "text-success";
+                        <div class="col-6 col-md-4 col-lg-3 inventory-status-item" data-product-id="@item.ProductId">
+                            <div class="border rounded p-2 h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <small class="fw-bold text-truncate" style="max-width:80%">@item.ProductName</small>
+                                    <span class="badge @textColor inventory-remaining" style="font-size:0.8rem">@item.RemainingQuantity</span>
+                                </div>
+                                <div class="progress" style="height:6px">
+                                    <div class="progress-bar @barColor inventory-progress"
+                                         role="progressbar"
+                                         style="width:@(100 - percentUsed)%"
+                                         data-starting="@item.StartingQuantity"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="text-muted">Sold: <span class="inventory-sold">@item.SoldQuantity</span></small>
+                                    <small class="text-muted">of @item.StartingQuantity</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 
     <!-- ═══════════ PRODUCT CARD GRID ═══════════ -->
     <div class="card">
@@ -374,13 +446,23 @@
                     var scoutCountEl = getEl('sessionScoutCount');
                     var notesEl = getEl('sessionNotes');
 
+                    // Collect inventory inputs
+                    var inventory = [];
+                    getAll('.inventory-input').forEach(function(inp) {
+                        var qty = parseInt(inp.value) || 0;
+                        if (qty > 0) {
+                            inventory.push({ productId: inp.dataset.productId, quantity: qty });
+                        }
+                    });
+
                     fetch('@Url.Action("StartSession", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                         body: JSON.stringify({
                             location: loc,
                             scoutCount: scoutCountEl ? (parseInt(scoutCountEl.value) || 1) : 1,
-                            notes: notesEl ? (notesEl.value || null) : null
+                            notes: notesEl ? (notesEl.value || null) : null,
+                            inventory: inventory
                         })
                     }).then(function(r) {
                         if (r.ok) location.reload();
@@ -551,6 +633,65 @@
                 if (revEl) { revEl.textContent = '$' + kpi.totalRevenue.toFixed(2); flashKpi(revEl); }
             }
 
+            // ══════════ BOOTH INVENTORY UPDATES ══════════
+            function updateBoothInventory(inventory) {
+                if (!inventory || !inventory.length) return;
+
+                inventory.forEach(function(item) {
+                    var statusItem = document.querySelector('.inventory-status-item[data-product-id="' + item.productId + '"]');
+                    if (!statusItem) return;
+
+                    var remainingEl = statusItem.querySelector('.inventory-remaining');
+                    var soldEl = statusItem.querySelector('.inventory-sold');
+                    var progressEl = statusItem.querySelector('.inventory-progress');
+
+                    if (remainingEl) {
+                        remainingEl.textContent = item.remaining;
+                        // Update color based on remaining
+                        remainingEl.className = 'badge inventory-remaining';
+                        if (item.remaining <= 0) remainingEl.classList.add('text-danger');
+                        else if (item.remaining <= 5) remainingEl.classList.add('text-warning');
+                        else remainingEl.classList.add('text-success');
+
+                        // Flash animation
+                        remainingEl.style.animation = 'none';
+                        void remainingEl.offsetWidth;
+                        remainingEl.style.animation = 'kpiPulse 0.5s ease';
+                    }
+
+                    if (soldEl) soldEl.textContent = item.sold;
+
+                    if (progressEl) {
+                        var starting = parseInt(progressEl.dataset.starting) || 1;
+                        var percentRemaining = Math.max(0, (item.remaining / starting) * 100);
+                        progressEl.style.width = percentRemaining + '%';
+
+                        // Update bar color
+                        progressEl.className = 'progress-bar inventory-progress';
+                        var percentUsed = 100 - percentRemaining;
+                        if (percentUsed >= 90) progressEl.classList.add('bg-danger');
+                        else if (percentUsed >= 70) progressEl.classList.add('bg-warning');
+                        else progressEl.classList.add('bg-success');
+                    }
+                });
+            }
+
+            // ══════════ INVENTORY PANEL TOGGLE ══════════
+            var toggleBtn = getEl('toggleInventoryBtn');
+            var inventoryBody = getEl('boothInventoryBody');
+            var toggleIcon = getEl('inventoryToggleIcon');
+            if (toggleBtn && inventoryBody) {
+                toggleBtn.onclick = function() {
+                    if (inventoryBody.style.display === 'none') {
+                        inventoryBody.style.display = '';
+                        if (toggleIcon) toggleIcon.className = 'fa fa-chevron-up';
+                    } else {
+                        inventoryBody.style.display = 'none';
+                        if (toggleIcon) toggleIcon.className = 'fa fa-chevron-down';
+                    }
+                };
+            }
+
             function escapeHtml(str) {
                 if (!str) return '';
                 var div = document.createElement('div');
@@ -619,6 +760,14 @@
                             return r.json().then(function(d) {
                                 if (d.kpi) updateKpis(d.kpi);
                                 if (d.sale) addSaleRow(d.sale);
+
+                                // Update booth inventory display
+                                if (d.inventory) updateBoothInventory(d.inventory);
+
+                                // Show warnings if oversold
+                                if (d.warnings && d.warnings.length > 0) {
+                                    alert('Warning: ' + d.warnings.join('\n'));
+                                }
 
                                 cart = {};
                                 getAll('.product-card.selected').forEach(function(c) {

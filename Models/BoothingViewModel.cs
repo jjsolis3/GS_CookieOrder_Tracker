@@ -28,6 +28,9 @@ public class BoothingViewModel
 
     // Booth location suggestions (recent locations used)
     public List<string> RecentLocations { get; set; } = new();
+
+    // Booth inventory for active session (Troop-provided inventory)
+    public List<BoothInventoryItem> BoothInventoryItems { get; set; } = new();
 }
 
 public class BoothSessionInfo
@@ -83,4 +86,16 @@ public class ScoutContribution
     public int TotalBoxes { get; set; }
     public decimal TotalRevenue { get; set; }
     public int SaleCount { get; set; }
+}
+
+/// <summary>
+/// Represents booth inventory status for a single product during an active booth session.
+/// </summary>
+public class BoothInventoryItem
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = "";
+    public int StartingQuantity { get; set; }
+    public int SoldQuantity { get; set; }
+    public int RemainingQuantity { get; set; }
 }

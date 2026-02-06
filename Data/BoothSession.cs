@@ -32,5 +32,7 @@ public class BoothSession
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // Navigation properties
     public List<Order> Orders { get; set; } = new();
+    public List<BoothInventory> Inventory { get; set; } = new();
 }

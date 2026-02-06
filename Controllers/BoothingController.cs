@@ -145,7 +145,23 @@ public class BoothingController : Controller
                 StartedAt = activeSession.StartedAt,
                 ScoutCount = activeSession.ScoutCount,
                 Notes = activeSession.Notes
-            } : null
+            } : null,
+            // Include booth inventory if there's an active session
+            BoothInventoryItems = activeSession != null
+                ? await _dbContext.BoothInventories
+                    .Include(bi => bi.Product)
+                    .Where(bi => bi.BoothSessionId == activeSession.Id)
+                    .Select(bi => new BoothInventoryItem
+                    {
+                        ProductId = bi.ProductId,
+                        ProductName = bi.Product!.Name,
+                        StartingQuantity = bi.StartingQuantity,
+                        SoldQuantity = bi.SoldQuantity,
+                        RemainingQuantity = bi.StartingQuantity - bi.SoldQuantity
+                    })
+                    .OrderBy(bi => bi.ProductName)
+                    .ToListAsync()
+                : new List<BoothInventoryItem>()
         };
 
         return View(vm);
@@ -188,9 +204,35 @@ public class BoothingController : Controller
         };
 
         _dbContext.BoothSessions.Add(session);
+
+        // Add booth starting inventory if provided
+        if (req.Inventory != null && req.Inventory.Count > 0)
+        {
+            foreach (var item in req.Inventory.Where(i => i.Quantity > 0))
+            {
+                _dbContext.BoothInventories.Add(new BoothInventory
+                {
+                    Id = Guid.NewGuid(),
+                    BoothSessionId = session.Id,
+                    ProductId = item.ProductId,
+                    StartingQuantity = item.Quantity,
+                    SoldQuantity = 0,
+                    ReturnedQuantity = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        return Ok(new { success = true, sessionId = session.Id });
+        // Return inventory status for the new session
+        var inventoryStatus = req.Inventory?
+            .Where(i => i.Quantity > 0)
+            .Select(i => new { productId = i.ProductId, starting = i.Quantity, sold = 0, remaining = i.Quantity })
+            .ToList() ?? new List<object>();
+
+        return Ok(new { success = true, sessionId = session.Id, inventory = inventoryStatus });
     }
 
     // ───────── END BOOTH SESSION ─────────
@@ -262,10 +304,22 @@ public class BoothingController : Controller
 
         _dbContext.Orders.Add(order);
 
+        // If this is a session sale, load booth inventory to update sold quantities
+        Dictionary<Guid, BoothInventory>? boothInventory = null;
+        if (req.SessionId.HasValue)
+        {
+            boothInventory = await _dbContext.BoothInventories
+                .Where(bi => bi.BoothSessionId == req.SessionId.Value)
+                .ToDictionaryAsync(bi => bi.ProductId);
+        }
+
         var lineItemDetails = new List<object>();
+        var inventoryWarnings = new List<string>();
+
         foreach (var item in req.Items)
         {
             if (!products.ContainsKey(item.ProductId)) continue;
+
             _dbContext.OrderLineItems.Add(new OrderLineItem
             {
                 Id = Guid.NewGuid(),
@@ -277,6 +331,20 @@ public class BoothingController : Controller
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
+
+            // Update booth inventory sold quantity
+            if (boothInventory != null && boothInventory.TryGetValue(item.ProductId, out var bi))
+            {
+                bi.SoldQuantity += item.Qty;
+                bi.UpdatedAt = DateTime.UtcNow;
+
+                // Check if oversold
+                if (bi.SoldQuantity > bi.StartingQuantity)
+                {
+                    inventoryWarnings.Add($"{products[item.ProductId].Name}: sold {bi.SoldQuantity} but only had {bi.StartingQuantity}");
+                }
+            }
+
             lineItemDetails.Add(new
             {
                 productName = products[item.ProductId].Name,
@@ -297,6 +365,24 @@ public class BoothingController : Controller
             sessionSaleCount = sessionOrders.Count;
             sessionTotalBoxes = sessionOrders.Sum(o => o.TotalQty ?? 0);
             sessionTotalRevenue = sessionOrders.Sum(o => o.TotalPrice ?? 0);
+        }
+
+        // Get updated booth inventory for response
+        List<object>? updatedInventory = null;
+        if (req.SessionId.HasValue)
+        {
+            updatedInventory = await _dbContext.BoothInventories
+                .Include(bi => bi.Product)
+                .Where(bi => bi.BoothSessionId == req.SessionId.Value)
+                .Select(bi => new
+                {
+                    productId = bi.ProductId,
+                    productName = bi.Product!.Name,
+                    starting = bi.StartingQuantity,
+                    sold = bi.SoldQuantity,
+                    remaining = bi.StartingQuantity - bi.SoldQuantity
+                })
+                .ToListAsync<object>();
         }
 
         return Ok(new
@@ -324,7 +410,10 @@ public class BoothingController : Controller
                 saleCount = sessionSaleCount,
                 totalBoxes = sessionTotalBoxes,
                 totalRevenue = sessionTotalRevenue
-            }
+            },
+            // Updated booth inventory
+            inventory = updatedInventory,
+            warnings = inventoryWarnings.Any() ? inventoryWarnings : null
         });
     }
 
@@ -616,6 +705,13 @@ public class StartSessionRequest
     public string Location { get; set; } = "";
     public int ScoutCount { get; set; } = 1;
     public string? Notes { get; set; }
+    public List<BoothInventoryInput>? Inventory { get; set; }
+}
+
+public class BoothInventoryInput
+{
+    public Guid ProductId { get; set; }
+    public int Quantity { get; set; }
 }
 
 public class EndSessionRequest
