@@ -286,17 +286,15 @@
             <strong>Payment Method:</strong> @Model.PaymentMethod
             @if (Model.PaidAmount.HasValue && Model.PaidAmount > 0)
             {
+                var balance = (Model.TotalPrice ?? 0) - Model.PaidAmount.Value;
                 <span style="margin-left:20px"><strong>Paid:</strong> @Model.PaidAmount.Value.ToString("C")</span>
-                @{
-                    var balance = (Model.TotalPrice ?? 0) - Model.PaidAmount.Value;
-                    if (balance > 0)
-                    {
-                        <span style="margin-left:20px;color:#c62828"><strong>Balance Due:</strong> @balance.ToString("C")</span>
-                    }
-                    else
-                    {
-                        <span style="margin-left:20px;color:#2e7d32"><strong>PAID IN FULL</strong></span>
-                    }
+                if (balance > 0)
+                {
+                    <span style="margin-left:20px;color:#c62828"><strong>Balance Due:</strong> @balance.ToString("C")</span>
+                }
+                else
+                {
+                    <span style="margin-left:20px;color:#2e7d32"><strong>PAID IN FULL</strong></span>
                 }
             }
         </div>
