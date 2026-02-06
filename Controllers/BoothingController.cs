@@ -229,7 +229,7 @@ public class BoothingController : Controller
         // Return inventory status for the new session
         var inventoryStatus = req.Inventory?
             .Where(i => i.Quantity > 0)
-            .Select(i => new { productId = i.ProductId, starting = i.Quantity, sold = 0, remaining = i.Quantity })
+            .Select(i => (object)new { productId = i.ProductId, starting = i.Quantity, sold = 0, remaining = i.Quantity })
             .ToList() ?? new List<object>();
 
         return Ok(new { success = true, sessionId = session.Id, inventory = inventoryStatus });
