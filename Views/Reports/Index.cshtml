@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-4">Reports & Analytics</h4>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Pending Orders Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-warning-light rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa fa-clock text-warning" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Pending Orders</h5>
+                        <small class="text-muted">Fulfillment Report</small>
+                    </div>
+                </div>
+                <p class="text-muted small">View all pending orders and the products needed to fulfill them. Great for preparing deliveries.</p>
+                <a asp-action="PendingOrders" class="btn btn-outline-warning btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payback Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-danger-light rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa fa-hand-holding-usd text-danger" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Payback Report</h5>
+                        <small class="text-muted">Collections Due</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Track what customers owe and what needs to be collected. Shows outstanding balances.</p>
+                <a asp-action="Payback" class="btn btn-outline-danger btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-success-light rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa fa-chart-bar text-success" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Sales Summary</h5>
+                        <small class="text-muted">Revenue & Products</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Analyze sales by day, week, or month. See top-selling products and revenue trends.</p>
+                <a asp-action="Sales" class="btn btn-outline-success btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-info-light rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa fa-boxes text-info" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Inventory Report</h5>
+                        <small class="text-muted">Stock Movements</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Track inventory received, sold, and returned. View current stock levels and batch history.</p>
+                <a asp-action="Inventory" class="btn btn-outline-info btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-warning-light { background: rgba(255, 193, 7, 0.1); }
+    .bg-danger-light { background: rgba(220, 53, 69, 0.1); }
+    .bg-success-light { background: rgba(40, 167, 69, 0.1); }
+    .bg-info-light { background: rgba(23, 162, 184, 0.1); }
+</style>
