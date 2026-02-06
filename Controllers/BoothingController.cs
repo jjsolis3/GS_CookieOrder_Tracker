@@ -23,9 +23,17 @@ public class BoothingController : Controller
     // ───────── MAIN PAGE ─────────
     public async Task<IActionResult> Index(string? date)
     {
-        var targetDate = string.IsNullOrEmpty(date)
-            ? DateTime.UtcNow.Date
-            : DateTime.Parse(date).Date;
+        // Parse date and ensure it's UTC (PostgreSQL requires UTC for timestamp with time zone)
+        DateTime targetDate;
+        if (string.IsNullOrEmpty(date))
+        {
+            targetDate = DateTime.UtcNow.Date;
+        }
+        else
+        {
+            var parsedDate = DateTime.Parse(date);
+            targetDate = DateTime.SpecifyKind(parsedDate.Date, DateTimeKind.Utc);
+        }
 
         // Find active booth session (not ended)
         var activeSession = await _dbContext.BoothSessions
@@ -47,10 +55,13 @@ public class BoothingController : Controller
         }
         else
         {
+            // Use date range comparison for UTC compatibility
+            var startOfDay = targetDate;
+            var endOfDay = targetDate.AddDays(1);
             orders = await _dbContext.Orders
                 .Include(o => o.LineItems).ThenInclude(li => li.Product)
                 .Include(o => o.GirlScout)
-                .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt.Date == targetDate)
+                .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt >= startOfDay && o.OrderedAt < endOfDay)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }

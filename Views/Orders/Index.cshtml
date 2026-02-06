@@ -155,7 +155,7 @@
                                 <col style="width:55px">  <!-- Qty -->
                                 <col style="width:80px">  <!-- Total -->
                                 <col style="width:80px">  <!-- Paid -->
-                                <col style="width:75px">  <!-- Actions -->
+                                <col style="width:90px">  <!-- Actions -->
                             </colgroup>
                             <thead>
                                 <tr>
@@ -206,10 +206,16 @@
                                         <td class="text-center">@order.TotalQty</td>
                                         <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
                                         <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
-                                        <td>
+                                        <td class="text-nowrap">
                                             <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
                                                 <i class="fa fa-eye"></i>
                                             </button>
+                                            @if (order.OrderType != "Booth Sale")
+                                            {
+                                                <a href="@Url.Action("Receipt", "Orders", new { id = order.Id })" target="_blank" class="btn btn-xs btn-outline-success ms-1" title="Print Receipt">
+                                                    <i class="fa fa-print"></i>
+                                                </a>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -397,6 +403,9 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <a href="#" target="_blank" class="btn btn-outline-success me-auto d-none" id="mdlPrintBtn">
+                    <i class="fa fa-print me-1"></i> Print Receipt
+                </a>
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" id="mdlSaveBtn">
                     <i class="fa fa-save me-1"></i> Save Changes
@@ -488,6 +497,15 @@
             });
 
             document.getElementById('mdlAddLineRow').classList.add('d-none');
+
+            // Show/hide print button based on order type (not for Booth Sales)
+            var printBtn = document.getElementById('mdlPrintBtn');
+            if (d.orderType !== 'Booth Sale') {
+                printBtn.classList.remove('d-none');
+                printBtn.href = '@Url.Action("Receipt", "Orders")' + '?id=' + d.id;
+            } else {
+                printBtn.classList.add('d-none');
+            }
         }
 
         document.getElementById('mdlSaveBtn').addEventListener('click', function () {

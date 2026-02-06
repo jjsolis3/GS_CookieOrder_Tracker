@@ -389,6 +389,21 @@ public class OrdersController : Controller
         };
     }
 
+    // ───────── RECEIPT: Print-friendly order view ─────────
+    [HttpGet]
+    public async Task<IActionResult> Receipt(Guid id)
+    {
+        var order = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null) return NotFound();
+
+        return View(order);
+    }
+
     private async Task<List<SelectListItem>> BuildCustomerOptionsAsync()
     {
         var customers = await _dbContext.Customers
