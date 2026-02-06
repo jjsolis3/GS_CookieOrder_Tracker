@@ -25,10 +25,26 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label small fw-bold">Customer</label>
+                            <label class="form-label small fw-bold">
+                                Customer
+                                <a href="javascript:void(0)" id="qoNewCustToggle" class="ms-2 small"><i class="fa fa-plus"></i> New</a>
+                            </label>
                             <select id="qoCustomer" class="form-select form-select-sm">
                                 <option value="">-- select customer --</option>
                             </select>
+                            <!-- Inline new customer form -->
+                            <div id="qoNewCustForm" class="d-none mt-2 p-2 border rounded bg-light">
+                                <div id="qoNewCustError" class="text-danger small mb-1 d-none"></div>
+                                <input id="qoNewCustName" class="form-control form-control-sm mb-1" placeholder="Name *" />
+                                <input id="qoNewCustEmail" type="email" class="form-control form-control-sm mb-1" placeholder="Email" />
+                                <input id="qoNewCustPhone" class="form-control form-control-sm mb-1" placeholder="Phone" />
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-primary btn-sm flex-fill" id="qoNewCustSave">
+                                        <i class="fa fa-save me-1"></i>Save
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="qoNewCustCancel">Cancel</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4 mb-2">
                             <label class="form-label small fw-bold">Girl Scout</label>
@@ -367,6 +383,76 @@
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fa fa-save me-1"></i> Save Order';
                     alert('Network error. Please try again.');
+                });
+            });
+        }
+
+        // ── New Customer inline form ──
+        var newCustToggle = document.getElementById('qoNewCustToggle');
+        var newCustForm = document.getElementById('qoNewCustForm');
+        var newCustCancel = document.getElementById('qoNewCustCancel');
+        var newCustSave = document.getElementById('qoNewCustSave');
+
+        if (newCustToggle) {
+            newCustToggle.addEventListener('click', function () {
+                newCustForm.classList.toggle('d-none');
+                document.getElementById('qoNewCustName').value = '';
+                document.getElementById('qoNewCustEmail').value = '';
+                document.getElementById('qoNewCustPhone').value = '';
+                document.getElementById('qoNewCustError').classList.add('d-none');
+                if (!newCustForm.classList.contains('d-none')) {
+                    document.getElementById('qoNewCustName').focus();
+                }
+            });
+        }
+
+        if (newCustCancel) {
+            newCustCancel.addEventListener('click', function () {
+                newCustForm.classList.add('d-none');
+            });
+        }
+
+        if (newCustSave) {
+            newCustSave.addEventListener('click', function () {
+                var name = document.getElementById('qoNewCustName').value.trim();
+                if (!name) {
+                    document.getElementById('qoNewCustError').textContent = 'Name is required.';
+                    document.getElementById('qoNewCustError').classList.remove('d-none');
+                    return;
+                }
+                newCustSave.disabled = true;
+                newCustSave.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Saving...';
+                fetch('/Customers/QuickCreate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        name: name,
+                        email: document.getElementById('qoNewCustEmail').value.trim() || null,
+                        phone: document.getElementById('qoNewCustPhone').value.trim() || null
+                    })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    newCustSave.disabled = false;
+                    newCustSave.innerHTML = '<i class="fa fa-save me-1"></i>Save';
+                    if (data.success) {
+                        var sel = document.getElementById('qoCustomer');
+                        var opt = document.createElement('option');
+                        opt.value = data.id;
+                        opt.textContent = data.name;
+                        sel.appendChild(opt);
+                        sel.value = data.id;
+                        newCustForm.classList.add('d-none');
+                    } else {
+                        document.getElementById('qoNewCustError').textContent = data.error || 'Failed to create customer.';
+                        document.getElementById('qoNewCustError').classList.remove('d-none');
+                    }
+                })
+                .catch(function () {
+                    newCustSave.disabled = false;
+                    newCustSave.innerHTML = '<i class="fa fa-save me-1"></i>Save';
+                    document.getElementById('qoNewCustError').textContent = 'Network error. Please try again.';
+                    document.getElementById('qoNewCustError').classList.remove('d-none');
                 });
             });
         }
