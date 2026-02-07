@@ -25,7 +25,7 @@
                         <div class="col-md-4 mb-3">
                             <label asp-for="CustomerId" class="form-label">
                                 Customer
-                                <a href="javascript:void(0)" id="openNewCustomerModal" class="ms-2 small"><i class="fa fa-plus"></i> New Customer</a>
+                                <a href="javascript:void(0)" id="openNewCustomerModal" class="ms-2 small label-info ps-1 pe-1"><i class="fa fa-plus"></i> New Customer</a>
                             </label>
                             <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select" id="customerSelect"></select>
                             <span asp-validation-for="CustomerId" class="text-danger"></span>
