@@ -95,7 +95,8 @@ public class InventoryController : Controller
     {
         var vm = new InventoryReturnCreateViewModel
         {
-            Products = await BuildProductOptionsAsync()
+            Products = await BuildProductOptionsAsync(),
+            ProductCards = await BuildProductCardsAsync()
         };
         return View(vm);
     }
@@ -112,6 +113,7 @@ public class InventoryController : Controller
         if (!ModelState.IsValid)
         {
             model.Products = await BuildProductOptionsAsync();
+            model.ProductCards = await BuildProductCardsAsync();
             return View(model);
         }
 
@@ -226,11 +228,13 @@ public class InventoryController : Controller
         });
     }
 
-    // ───────── AJAX: Update batch ─────────
+    // ───────── AJAX: Update batch (header + receipts) ─────────
     [HttpPost]
     public async Task<IActionResult> UpdateBatch([FromBody] UpdateBatchRequest req)
     {
-        var batch = await _dbContext.InventoryBatches.FindAsync(req.BatchId);
+        var batch = await _dbContext.InventoryBatches
+            .Include(b => b.Receipts)
+            .FirstOrDefaultAsync(b => b.Id == req.BatchId);
         if (batch == null) return NotFound(new { error = "Batch not found." });
 
         batch.Status = req.Status;
@@ -239,8 +243,47 @@ public class InventoryController : Controller
         batch.Notes = req.Notes;
         batch.GirlScoutId = string.IsNullOrEmpty(req.GirlScoutId) ? null : Guid.Parse(req.GirlScoutId);
 
+        // Update receipt line items if provided
+        if (req.Receipts != null)
+        {
+            _dbContext.InventoryReceipts.RemoveRange(batch.Receipts);
+
+            foreach (var r in req.Receipts)
+            {
+                if (r.ProductId == Guid.Empty || (r.QuantityBoxes == 0 && r.QuantityCases == 0))
+                    continue;
+                _dbContext.InventoryReceipts.Add(new InventoryReceipt
+                {
+                    Id = Guid.NewGuid(),
+                    InventoryBatchId = batch.Id,
+                    ProductId = r.ProductId,
+                    QuantityBoxes = r.QuantityBoxes,
+                    QuantityCases = r.QuantityCases,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            var validReceipts = req.Receipts.Where(r => r.ProductId != Guid.Empty && (r.QuantityBoxes > 0 || r.QuantityCases > 0)).ToList();
+            batch.TotalBoxes = validReceipts.Sum(r => r.QuantityBoxes);
+            batch.TotalCases = validReceipts.Sum(r => r.QuantityCases);
+        }
+
         await _dbContext.SaveChangesAsync();
         return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Get products for modal/card selection ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetProducts()
+    {
+        var products = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath })
+            .ToListAsync();
+        return Json(products);
     }
 
     // ───────── AJAX: Delete batch ─────────
@@ -263,6 +306,7 @@ public class InventoryController : Controller
     {
         model.GirlScouts = await BuildGirlScoutOptionsAsync();
         model.Products = await BuildProductOptionsAsync();
+        model.ProductCards = await BuildProductCardsAsync();
         model.Statuses = new List<SelectListItem>
         {
             new("Received", "Received"),
@@ -300,6 +344,23 @@ public class InventoryController : Controller
             .Select(product => new SelectListItem(product.Name, product.Id.ToString()))
             .ToListAsync();
     }
+
+    private async Task<List<ProductCardItem>> BuildProductCardsAsync()
+    {
+        return await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new ProductCardItem
+            {
+                Id = p.Id,
+                Name = p.Name,
+                PricePerBox = p.PricePerBox,
+                BoxesPerCase = p.BoxesPerCase,
+                ImagePath = p.ImagePath
+            })
+            .ToListAsync();
+    }
 }
 
 public class UpdateBatchRequest
@@ -310,6 +371,14 @@ public class UpdateBatchRequest
     public string? PickupDate { get; set; }
     public string? Notes { get; set; }
     public string? GirlScoutId { get; set; }
+    public List<UpdateReceiptLine>? Receipts { get; set; }
+}
+
+public class UpdateReceiptLine
+{
+    public Guid ProductId { get; set; }
+    public int QuantityBoxes { get; set; }
+    public int QuantityCases { get; set; }
 }
 
 public class DeleteBatchRequest

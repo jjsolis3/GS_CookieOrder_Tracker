@@ -20,4 +20,5 @@ public class InventoryReturnCreateViewModel
     public string? Notes { get; set; }
 
     public List<SelectListItem> Products { get; set; } = new();
+    public List<ProductCardItem> ProductCards { get; set; } = new();
 }

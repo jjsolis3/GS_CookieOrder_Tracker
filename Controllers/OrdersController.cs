@@ -459,7 +459,7 @@ public class OrdersController : Controller
             .Where(p => p.Active)
             .OrderBy(p => p.SortOrder)
             .ThenBy(p => p.Name)
-            .Select(p => new { p.Id, p.Name, p.PricePerBox })
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath, p.BoxesPerCase })
             .ToListAsync();
 
         model.Products = products
@@ -467,6 +467,15 @@ public class OrdersController : Controller
             .ToList();
 
         model.ProductPrices = products.ToDictionary(p => p.Id.ToString(), p => p.PricePerBox);
+
+        model.ProductCards = products.Select(p => new ProductCardItem
+        {
+            Id = p.Id,
+            Name = p.Name,
+            PricePerBox = p.PricePerBox,
+            BoxesPerCase = p.BoxesPerCase,
+            ImagePath = p.ImagePath
+        }).ToList();
         model.OrderTypes = new List<SelectListItem>
         {
             new("Direct Sale", "Direct Sale"),

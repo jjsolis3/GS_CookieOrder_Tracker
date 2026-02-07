@@ -54,68 +54,43 @@
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-                        <h5 class="card-title mb-0">Line Items</h5>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="addLineBtn">
-                            <i class="fa fa-plus me-1"></i> Add Product
-                        </button>
-                    </div>
-                    <hr>
-
-                    <div id="lineItemsContainer">
-                        @for (var i = 0; i < Model.LineItems.Count; i++)
+                    <!-- ═══════════ PRODUCT CARD SELECTION ═══════════ -->
+                    <h5 class="card-title mt-4 mb-2">Select Products</h5>
+                    <p class="text-muted small mb-3">Tap a product to add it to the order. Adjust the quantity using the +/- controls.</p>
+                    <div class="row g-2 mb-3" id="orderProductCardGrid">
+                        @foreach (var card in Model.ProductCards)
                         {
-                            <div class="row line-item align-items-end mb-2" data-index="@i">
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Product</label>
-                                    <select name="LineItems[@i].ProductId" class="form-select product-select">
-                                        <option value="">-- select --</option>
-                                        @foreach (var p in Model.Products)
-                                        {
-                                            var price = Model.ProductPrices.GetValueOrDefault(p.Value, 0);
-                                            if (p.Value == Model.LineItems[i].ProductId.ToString())
-                                            {
-                                                <option value="@p.Value" data-price="@price" selected="selected">@p.Text</option>
-                                            }
-                                            else
-                                            {
-                                                <option value="@p.Value" data-price="@price">@p.Text</option>
-                                            }
-                                        }
-                                    </select>
-                                </div>
-                                <div class="col-md-2 mb-2">
-                                    <label class="form-label">Boxes</label>
-                                    <input name="LineItems[@i].QuantityBoxes" type="number" min="1" value="@Model.LineItems[i].QuantityBoxes" class="form-control qty-input" />
-                                </div>
-                                <div class="col-md-2 mb-2">
-                                    <label class="form-label">Unit Price</label>
-                                    <input name="LineItems[@i].UnitPrice" type="number" step="0.01" min="0.01" value="@Model.LineItems[i].UnitPrice" class="form-control unit-price-input" readonly />
-                                </div>
-                                <div class="col-md-2 mb-2 inv-source-col">
-                                    <label class="form-label">Inv. Source</label>
-                                    <select name="LineItems[@i].InventorySource" class="form-select inv-source-select">
-                                        @foreach (var s in Model.InventorySources)
-                                        {
-                                            if (s.Value == Model.LineItems[i].InventorySource)
-                                            {
-                                                <option value="@s.Value" selected>@s.Text</option>
-                                            }
-                                            else
-                                            {
-                                                <option value="@s.Value">@s.Text</option>
-                                            }
-                                        }
-                                    </select>
-                                </div>
-                                <div class="col-md-2 mb-2">
-                                    <button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100">
-                                        <i class="fa fa-trash"></i> Remove
-                                    </button>
+                            var imgSrc = !string.IsNullOrEmpty(card.ImagePath) ? card.ImagePath : "/images/pre.gif";
+                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                                <div class="card order-product-card h-100 text-center border"
+                                     data-product-id="@card.Id"
+                                     data-product-name="@card.Name"
+                                     data-price="@card.PricePerBox"
+                                     style="cursor:pointer; transition: all 0.15s ease; opacity:0.6">
+                                    <div class="card-body p-2">
+                                        <img src="@imgSrc" alt="@card.Name" class="mb-1 rounded" style="width:64px; height:64px; object-fit:contain;" />
+                                        <p class="mb-0 fw-bold small" style="line-height:1.2">@card.Name</p>
+                                        <small class="text-success fw-bold">@card.PricePerBox.ToString("C")</small>
+                                        <!-- Qty controls (shown when selected) -->
+                                        <div class="qty-controls d-none mt-1">
+                                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                                <button type="button" class="btn btn-outline-danger btn-xs card-qty-minus" style="width:28px;height:28px;padding:0">
+                                                    <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                                                </button>
+                                                <input type="number" class="form-control form-control-sm text-center card-qty-input" value="1" min="1" style="width:44px;height:28px;padding:2px" />
+                                                <button type="button" class="btn btn-outline-success btn-xs card-qty-plus" style="width:28px;height:28px;padding:0">
+                                                    <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         }
                     </div>
+
+                    <!-- Hidden line items container (populated by JS on submit) -->
+                    <div id="lineItemsContainer" style="display:none"></div>
 
                     <!-- ═══════════ ORDER TOTAL SUMMARY ═══════════ -->
                     <div class="card bg-light mt-3 mb-3" id="orderTotalCard">
@@ -181,167 +156,168 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        // Cache product options HTML from the first row for reuse
-        var productOptionsHtml = document.querySelector('.line-item .product-select').innerHTML;
-        var invSourceOptionsHtml = document.querySelector('.inv-source-select') ? document.querySelector('.inv-source-select').innerHTML : '<option value="Personal">Personal</option><option value="Troop">Troop</option>';
+        (function () {
+            'use strict';
 
-        // Auto-fill unit price when a product is selected
-        function onProductChange(selectEl) {
-            var opt = selectEl.options[selectEl.selectedIndex];
-            var price = opt && opt.dataset.price ? opt.dataset.price : '0';
-            var row = selectEl.closest('.line-item');
-            var priceInput = row.querySelector('input[name$=".UnitPrice"]');
-            if (priceInput) priceInput.value = price;
-            recalcOrderTotal();
-        }
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            var orderTypeSelect = document.getElementById('orderType');
+            var cardGrid = document.getElementById('orderProductCardGrid');
 
-        // Recalculate and display running order total
-        function recalcOrderTotal() {
-            var rows = document.querySelectorAll('#lineItemsContainer .line-item');
-            var totalBoxes = 0, totalPrice = 0, itemCount = 0;
-            rows.forEach(function (row) {
-                var qtyInput = row.querySelector('input[name$=".QuantityBoxes"]');
-                var priceInput = row.querySelector('input[name$=".UnitPrice"]');
-                var qty = qtyInput ? (parseInt(qtyInput.value) || 0) : 0;
-                var price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
-                if (qty > 0 && price > 0) {
-                    totalBoxes += qty;
-                    totalPrice += qty * price;
-                    itemCount++;
+            // ── Product card selection ──
+            cardGrid.addEventListener('click', function (e) {
+                if (e.target.tagName === 'INPUT') return;
+
+                var card = e.target.closest('.order-product-card');
+                if (!card) return;
+
+                var btn = e.target.closest('.card-qty-minus') || e.target.closest('.card-qty-plus');
+                if (btn) {
+                    // +/- button clicks
+                    var input = card.querySelector('.card-qty-input');
+                    var val = parseInt(input.value) || 1;
+                    if (e.target.closest('.card-qty-plus')) {
+                        input.value = val + 1;
+                    } else {
+                        if (val <= 1) {
+                            // Deselect card
+                            card.querySelector('.qty-controls').classList.add('d-none');
+                            card.style.opacity = '0.6';
+                            card.style.borderColor = '';
+                            card.style.boxShadow = '';
+                            input.value = 1;
+                        } else {
+                            input.value = val - 1;
+                        }
+                    }
+                    recalcOrderTotal();
+                    return;
+                }
+
+                // Toggle card selection
+                var controls = card.querySelector('.qty-controls');
+                var isSelected = !controls.classList.contains('d-none');
+
+                if (isSelected) {
+                    controls.classList.add('d-none');
+                    card.style.opacity = '0.6';
+                    card.style.borderColor = '';
+                    card.style.boxShadow = '';
+                    card.querySelector('.card-qty-input').value = 1;
+                } else {
+                    controls.classList.remove('d-none');
+                    card.style.opacity = '1';
+                    card.style.borderColor = '#0d6efd';
+                    card.style.boxShadow = '0 0 0 2px rgba(13,110,253,.25)';
+                }
+                recalcOrderTotal();
+            });
+
+            cardGrid.addEventListener('input', function (e) {
+                if (e.target.classList.contains('card-qty-input')) {
+                    recalcOrderTotal();
                 }
             });
-            var totalEl = document.getElementById('createOrderTotal');
-            var boxesEl = document.getElementById('createTotalBoxes');
-            var itemsEl = document.getElementById('createTotalItems');
-            if (totalEl) totalEl.textContent = '$' + totalPrice.toFixed(2);
-            if (boxesEl) boxesEl.textContent = totalBoxes;
-            if (itemsEl) itemsEl.textContent = itemCount;
 
-            // Highlight total when non-zero
-            var card = document.getElementById('orderTotalCard');
-            if (card) {
-                if (totalPrice > 0) {
-                    card.style.borderLeft = '4px solid var(--primary)';
-                } else {
-                    card.style.borderLeft = '';
-                }
+            // ── Order total calculation ──
+            function recalcOrderTotal() {
+                var cards = document.querySelectorAll('.order-product-card');
+                var totalBoxes = 0, totalPrice = 0, itemCount = 0;
+
+                cards.forEach(function (card) {
+                    var controls = card.querySelector('.qty-controls');
+                    if (controls.classList.contains('d-none')) return;
+                    var qty = parseInt(card.querySelector('.card-qty-input').value) || 0;
+                    var price = parseFloat(card.dataset.price) || 0;
+                    if (qty > 0) {
+                        totalBoxes += qty;
+                        totalPrice += qty * price;
+                        itemCount++;
+                    }
+                });
+
+                document.getElementById('createOrderTotal').textContent = '$' + totalPrice.toFixed(2);
+                document.getElementById('createTotalBoxes').textContent = totalBoxes;
+                document.getElementById('createTotalItems').textContent = itemCount;
+
+                var totalCard = document.getElementById('orderTotalCard');
+                totalCard.style.borderLeft = totalPrice > 0 ? '4px solid var(--primary)' : '';
             }
-        }
 
-        // Listen for product changes on all current and future rows (event delegation)
-        var lineContainer = document.getElementById('lineItemsContainer');
-        lineContainer.addEventListener('change', function (e) {
-            if (e.target.classList.contains('product-select')) {
-                onProductChange(e.target);
-            }
-        });
-        // Listen for quantity changes
-        lineContainer.addEventListener('input', function (e) {
-            if (e.target.name && e.target.name.indexOf('.QuantityBoxes') !== -1) {
-                recalcOrderTotal();
-            }
-        });
+            // ── Build hidden line items on submit ──
+            document.querySelector('form[action*="Create"]').addEventListener('submit', function () {
+                var container = document.getElementById('lineItemsContainer');
+                container.innerHTML = '';
+                var idx = 0;
+                var invSource = orderTypeSelect.value === 'Booth Sale' ? 'Troop' : 'Personal';
 
-        document.getElementById('addLineBtn').addEventListener('click', function () {
-            var container = document.getElementById('lineItemsContainer');
-            var idx = container.querySelectorAll('.line-item').length;
-            var div = document.createElement('div');
-            div.className = 'row line-item align-items-end mb-2';
-            div.setAttribute('data-index', idx);
-            div.innerHTML =
-                '<div class="col-md-4 mb-2"><label class="form-label">Product</label>' +
-                '<select name="LineItems[' + idx + '].ProductId" class="form-select product-select">' + productOptionsHtml + '</select></div>' +
-                '<div class="col-md-2 mb-2"><label class="form-label">Boxes</label>' +
-                '<input name="LineItems[' + idx + '].QuantityBoxes" type="number" min="1" value="1" class="form-control qty-input" /></div>' +
-                '<div class="col-md-2 mb-2"><label class="form-label">Unit Price</label>' +
-                '<input name="LineItems[' + idx + '].UnitPrice" type="number" step="0.01" min="0.01" value="0" class="form-control unit-price-input" readonly /></div>' +
-                '<div class="col-md-2 mb-2 inv-source-col"><label class="form-label">Inv. Source</label>' +
-                '<select name="LineItems[' + idx + '].InventorySource" class="form-select inv-source-select">' + invSourceOptionsHtml + '</select></div>' +
-                '<div class="col-md-2 mb-2"><button type="button" class="btn btn-outline-danger btn-sm remove-line-btn w-100"><i class="fa fa-trash"></i> Remove</button></div>';
-            container.appendChild(div);
-            toggleInvSourceVisibility();
-            recalcOrderTotal();
-        });
+                document.querySelectorAll('.order-product-card').forEach(function (card) {
+                    var controls = card.querySelector('.qty-controls');
+                    if (controls.classList.contains('d-none')) return;
+                    var qty = parseInt(card.querySelector('.card-qty-input').value) || 0;
+                    if (qty <= 0) return;
 
-        document.addEventListener('click', function (e) {
-            if (e.target.closest('.remove-line-btn')) {
-                var row = e.target.closest('.line-item');
-                row.remove();
-                reindexLines();
-                recalcOrderTotal();
-            }
-        });
+                    var productId = card.dataset.productId;
+                    var price = card.dataset.price;
 
-        function reindexLines() {
-            document.querySelectorAll('#lineItemsContainer .line-item').forEach(function (row, i) {
-                row.setAttribute('data-index', i);
-                row.querySelectorAll('[name]').forEach(function (el) {
-                    el.name = el.name.replace(/LineItems\[\d+\]/, 'LineItems[' + i + ']');
+                    container.innerHTML += '<input type="hidden" name="LineItems[' + idx + '].ProductId" value="' + productId + '">'
+                        + '<input type="hidden" name="LineItems[' + idx + '].QuantityBoxes" value="' + qty + '">'
+                        + '<input type="hidden" name="LineItems[' + idx + '].UnitPrice" value="' + price + '">'
+                        + '<input type="hidden" name="LineItems[' + idx + '].InventorySource" value="' + invSource + '">';
+                    idx++;
                 });
             });
-        }
 
-        // Show/hide inventory source and delivery date based on order type
-        var orderTypeSelect = document.getElementById('orderType');
-        function toggleInvSourceVisibility() {
-            var type = orderTypeSelect.value;
-            var show = type !== 'Booth Sale';
-            document.querySelectorAll('.inv-source-col').forEach(function (col) {
-                col.style.display = show ? '' : 'none';
-            });
-            var ddGroup = document.getElementById('deliveryDateGroup');
-            if (ddGroup) ddGroup.style.display = type === 'Online Delivery' ? '' : 'none';
-        }
-        orderTypeSelect.addEventListener('change', toggleInvSourceVisibility);
-        toggleInvSourceVisibility();
-
-        // ── New Customer modal ──
-        document.getElementById('openNewCustomerModal').addEventListener('click', function () {
-            document.getElementById('custName').value = '';
-            document.getElementById('custEmail').value = '';
-            document.getElementById('custPhone').value = '';
-            document.getElementById('custModalError').classList.add('d-none');
-            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('newCustomerModal'));
-            modal.show();
-        });
-
-        // Initial total calculation on page load
-        recalcOrderTotal();
-
-        document.getElementById('custSaveBtn').addEventListener('click', function () {
-            var name = document.getElementById('custName').value.trim();
-            if (!name) {
-                document.getElementById('custModalError').textContent = 'Name is required.';
-                document.getElementById('custModalError').classList.remove('d-none');
-                return;
+            // ── Show/hide delivery date based on order type ──
+            function toggleDeliveryDate() {
+                var ddGroup = document.getElementById('deliveryDateGroup');
+                if (ddGroup) ddGroup.style.display = orderTypeSelect.value === 'Online Delivery' ? '' : 'none';
             }
-            fetch('@Url.Action("QuickCreate", "Customers")', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                body: JSON.stringify({
-                    name: name,
-                    email: document.getElementById('custEmail').value.trim() || null,
-                    phone: document.getElementById('custPhone').value.trim() || null
-                })
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    // Add new customer to the dropdown and select it
-                    var sel = document.getElementById('customerSelect');
-                    var opt = document.createElement('option');
-                    opt.value = data.id;
-                    opt.text = data.name;
-                    sel.appendChild(opt);
-                    sel.value = data.id;
-                    // Close modal
-                    bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
-                } else {
-                    document.getElementById('custModalError').textContent = data.error || 'Failed to create.';
-                    document.getElementById('custModalError').classList.remove('d-none');
-                }
+            orderTypeSelect.addEventListener('change', toggleDeliveryDate);
+            toggleDeliveryDate();
+
+            // ── New Customer modal ──
+            document.getElementById('openNewCustomerModal').addEventListener('click', function () {
+                document.getElementById('custName').value = '';
+                document.getElementById('custEmail').value = '';
+                document.getElementById('custPhone').value = '';
+                document.getElementById('custModalError').classList.add('d-none');
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('newCustomerModal')).show();
             });
-        });
+
+            document.getElementById('custSaveBtn').addEventListener('click', function () {
+                var name = document.getElementById('custName').value.trim();
+                if (!name) {
+                    document.getElementById('custModalError').textContent = 'Name is required.';
+                    document.getElementById('custModalError').classList.remove('d-none');
+                    return;
+                }
+                fetch('@Url.Action("QuickCreate", "Customers")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        name: name,
+                        email: document.getElementById('custEmail').value.trim() || null,
+                        phone: document.getElementById('custPhone').value.trim() || null
+                    })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var sel = document.getElementById('customerSelect');
+                        var opt = document.createElement('option');
+                        opt.value = data.id;
+                        opt.text = data.name;
+                        sel.appendChild(opt);
+                        sel.value = data.id;
+                        bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
+                    } else {
+                        document.getElementById('custModalError').textContent = data.error || 'Failed to create.';
+                        document.getElementById('custModalError').classList.remove('d-none');
+                    }
+                });
+            });
+
+            recalcOrderTotal();
+        })();
     </script>
 }
