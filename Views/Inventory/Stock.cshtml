@@ -81,11 +81,11 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
+                                <th class="text-end">On Hand</th>
                                 <th class="text-end">Received</th>
                                 <th class="text-end">Sold (Personal)</th>
                                 <th class="text-end">Sold (Troop)</th>
-                                <th class="text-end">Returned</th>
-                                <th class="text-end">On Hand</th>
+                                <th class="text-end">Returned</th>                                
                             </tr>
                         </thead>
                         <tbody>
@@ -95,6 +95,7 @@
                                 <tr>
                                     <td><strong>@p.ProductName</strong></td>
                                     <td class="text-end">@p.BoxesReceived</td>
+                                    <td class="text-end"><strong class="@onHandClass">@p.BoxesOnHand</strong></td>
                                     <td class="text-end">@p.BoxesSoldPersonal</td>
                                     <td class="text-end">@p.BoxesSoldTroop</td>
                                     <td class="text-end">
@@ -107,7 +108,7 @@
                                             <span>0</span>
                                         }
                                     </td>
-                                    <td class="text-end"><strong class="@onHandClass">@p.BoxesOnHand</strong></td>
+                                    
                                 </tr>
                             }
                         </tbody>
