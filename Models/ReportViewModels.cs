@@ -21,7 +21,7 @@ public class ProductSummaryItem
     public decimal TotalValue { get; set; }
 }
 
-// ═══════════ PAYBACK REPORT ═══════════
+// ═══════════ COLLECTIONS REPORT (outstanding customer payments) ═══════════
 public class PaybackReportViewModel
 {
     public DateTime DateFrom { get; set; }
@@ -41,6 +41,38 @@ public class CustomerPaybackSummary
     public decimal TotalOrdered { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalOwed { get; set; }
+}
+
+// ═══════════ TROOP PAYBACK REPORT (what we owe the troop) ═══════════
+public class TroopPaybackReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public List<PaybackProductBreakdown> ProductBreakdown { get; set; } = new();
+    public List<PaybackScoutSummary> ByScout { get; set; } = new();
+    public decimal TotalFromSales { get; set; }
+    public decimal TotalReturnedValue { get; set; }
+    public decimal TotalPaidBack { get; set; }
+    public decimal TotalOwedToTroop { get; set; }
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public DateTime GeneratedAt { get; set; }
+}
+
+public class PaybackProductBreakdown
+{
+    public string ProductName { get; set; } = "";
+    public decimal PricePerBox { get; set; }
+    public int BoxesSold { get; set; }
+    public decimal AmountOwed { get; set; }
+}
+
+public class PaybackScoutSummary
+{
+    public string ScoutName { get; set; } = "";
+    public int OrderCount { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalAmount { get; set; }
 }
 
 // ═══════════ SALES REPORT ═══════════

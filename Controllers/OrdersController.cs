@@ -109,7 +109,6 @@ public class OrdersController : Controller
                 new("All Statuses", ""),
                 new("Pending", "Pending"),
                 new("Confirmed", "Confirmed"),
-                new("Paid", "Paid"),
                 new("Delivered", "Delivered"),
                 new("Completed", "Completed"),
                 new("Cancelled", "Cancelled")
@@ -159,7 +158,7 @@ public class OrdersController : Controller
             OrderType = model.OrderType,
             PaymentMethod = model.PaymentMethod,
             IsOnlinePaid = isOnlinePaid,
-            Status = isOnlinePaid ? "Paid" : "Pending",
+            Status = isOnlinePaid ? "Completed" : "Pending",
             OrderedAt = orderedUtc,
             DeliveryDate = model.DeliveryDate,
             Notes = model.Notes,
@@ -202,11 +201,27 @@ public class OrdersController : Controller
         order.Status = req.Status;
         order.UpdatedAt = DateTime.UtcNow;
 
-        if (req.Status == "Paid" || req.Status == "Completed")
-            order.PaidAmount = order.TotalPrice;
+        // Payment is now tracked separately via PaidAmount field, not via status
 
         await _dbContext.SaveChangesAsync();
         return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Toggle payment status ─────────
+    [HttpPost]
+    public async Task<IActionResult> TogglePayment([FromBody] TogglePaymentRequest req)
+    {
+        var order = await _dbContext.Orders.FindAsync(req.OrderId);
+        if (order == null) return NotFound();
+
+        if (req.MarkAsPaid)
+            order.PaidAmount = order.TotalPrice;
+        else
+            order.PaidAmount = 0m;
+
+        order.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true, paidAmount = order.PaidAmount });
     }
 
     // ───────── AJAX: Get order detail for modal ─────────
@@ -400,7 +415,7 @@ public class OrdersController : Controller
             OrderType = req.OrderType ?? "Direct Sale",
             PaymentMethod = req.PaymentMethod ?? "Cash",
             IsOnlinePaid = isOnlinePaid,
-            Status = isOnlinePaid ? "Paid" : "Pending",
+            Status = isOnlinePaid ? "Completed" : "Pending",
             OrderedAt = orderedUtc,
             Notes = req.Notes,
             TotalQty = totalQty,
@@ -578,6 +593,12 @@ public class AddLineItemRequest
 public class RemoveLineItemRequest
 {
     public Guid LineItemId { get; set; }
+}
+
+public class TogglePaymentRequest
+{
+    public Guid OrderId { get; set; }
+    public bool MarkAsPaid { get; set; }
 }
 
 public class QuickCreateOrderRequest

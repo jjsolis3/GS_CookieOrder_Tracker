@@ -1,4 +1,4 @@
-@model GS_CookieOrder_Tracker.Models.PaybackReportViewModel
+@model GS_CookieOrder_Tracker.Models.TroopPaybackReportViewModel
 
 @{
     Layout = null;
@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Payback / Collections Report</title>
+    <title>Troop Payback Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -28,13 +28,13 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .header {
-            border-bottom: 3px solid #dc3545;
+            border-bottom: 3px solid #6f42c1;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
         .header h1 {
             font-size: 22px;
-            color: #dc3545;
+            color: #6f42c1;
             margin-bottom: 5px;
         }
         .header .subtitle {
@@ -67,7 +67,7 @@
         }
         .date-filter button {
             padding: 6px 15px;
-            background: #dc3545;
+            background: #6f42c1;
             color: white;
             border: none;
             border-radius: 4px;
@@ -75,55 +75,43 @@
         }
         .summary-cards {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 25px;
+            flex-wrap: wrap;
         }
         .summary-card {
             flex: 1;
+            min-width: 130px;
             padding: 15px;
             border-radius: 8px;
             text-align: center;
         }
-        .summary-card.ordered { background: #e3f2fd; }
-        .summary-card.paid { background: #e8f5e9; }
-        .summary-card.owed { background: #ffebee; }
+        .summary-card.sales { background: #e3f2fd; }
+        .summary-card.returns { background: #fff3e0; }
+        .summary-card.paid-back { background: #e8f5e9; }
+        .summary-card.owed { background: #f3e5f5; }
         .summary-card .value {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
         }
-        .summary-card.ordered .value { color: #1565c0; }
-        .summary-card.paid .value { color: #2e7d32; }
-        .summary-card.owed .value { color: #c62828; }
+        .summary-card.sales .value { color: #1565c0; }
+        .summary-card.returns .value { color: #e65100; }
+        .summary-card.paid-back .value { color: #2e7d32; }
+        .summary-card.owed .value { color: #6f42c1; }
         .summary-card .label {
-            font-size: 11px;
+            font-size: 10px;
             color: #666;
             text-transform: uppercase;
         }
-        .customer-section {
-            margin-bottom: 25px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .customer-header {
-            background: #f8f9fa;
-            padding: 12px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-        }
-        .customer-name {
+        .section-title {
+            font-size: 15px;
             font-weight: bold;
-            font-size: 14px;
+            color: #444;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #eee;
         }
-        .customer-owed {
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-weight: bold;
-        }
+        .section { margin-bottom: 25px; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -140,10 +128,24 @@
             padding: 8px 10px;
             border-bottom: 1px solid #f5f5f5;
         }
+        tfoot td {
+            font-weight: bold;
+            border-top: 2px solid #ddd;
+            background: #fafafa;
+        }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
+        .text-purple { color: #6f42c1; }
         .text-success { color: #2e7d32; }
-        .text-danger { color: #c62828; }
+        .text-muted { color: #999; }
+        .info-note {
+            background: #f0ebf8;
+            border-left: 4px solid #6f42c1;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            font-size: 11px;
+            color: #555;
+        }
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -166,15 +168,14 @@
             text-decoration: none;
             display: inline-block;
         }
-        .btn-print { background: #dc3545; color: white; }
+        .btn-print { background: #6f42c1; color: white; }
         .btn-back { background: #666; color: white; }
-        .no-data { text-align: center; color: #999; padding: 40px; }
 
         @@media print {
             body { background: white; padding: 0; }
             .report { box-shadow: none; padding: 15px; max-width: 100%; }
             .print-buttons, .date-filter { display: none; }
-            .summary-card, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .summary-card, th, tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -186,11 +187,17 @@
 
     <div class="report">
         <div class="header">
-            <h1>Payback / Collections Report</h1>
+            <h1>Troop Payback Report</h1>
             <div class="subtitle">
                 @Model.DateFrom.ToString("MMM d, yyyy") - @Model.DateTo.ToString("MMM d, yyyy") |
                 Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")
             </div>
+        </div>
+
+        <div class="info-note">
+            This report shows how much is owed to the Girl Scout Troop for cookies sold.
+            It includes only <strong>paid</strong> orders with status <strong>Delivered</strong> or <strong>Completed</strong>,
+            excluding Online Delivery orders (already settled through the portal) and Booth Sales.
         </div>
 
         <div class="date-filter">
@@ -207,69 +214,131 @@
             </form>
         </div>
 
+        <!-- Summary Cards -->
         <div class="summary-cards">
-            <div class="summary-card ordered">
-                <div class="value">@Model.TotalOrdered.ToString("C")</div>
-                <div class="label">Total Ordered</div>
+            <div class="summary-card sales">
+                <div class="value">@Model.TotalFromSales.ToString("C")</div>
+                <div class="label">From Sales (@Model.TotalOrders orders, @Model.TotalBoxes boxes)</div>
             </div>
-            <div class="summary-card paid">
-                <div class="value">@Model.TotalPaid.ToString("C")</div>
-                <div class="label">Total Collected</div>
+            <div class="summary-card returns">
+                <div class="value">-@Model.TotalReturnedValue.ToString("C")</div>
+                <div class="label">Returns Credit</div>
+            </div>
+            <div class="summary-card paid-back">
+                <div class="value">-@Model.TotalPaidBack.ToString("C")</div>
+                <div class="label">Already Paid Back</div>
             </div>
             <div class="summary-card owed">
-                <div class="value">@Model.TotalOwed.ToString("C")</div>
-                <div class="label">Outstanding Balance</div>
+                <div class="value">@Model.TotalOwedToTroop.ToString("C")</div>
+                <div class="label">Owed to Troop</div>
             </div>
         </div>
 
-        @if (!Model.CustomerSummaries.Any())
+        <!-- Product Breakdown -->
+        <div class="section">
+            <h3 class="section-title">Product Breakdown</h3>
+            @if (!Model.ProductBreakdown.Any())
+            {
+                <p class="text-muted" style="text-align:center;padding:20px">No qualifying orders found for this period.</p>
+            }
+            else
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-right">Price/Box</th>
+                            <th class="text-center">Boxes Sold</th>
+                            <th class="text-right">Amount Owed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.ProductBreakdown)
+                        {
+                            <tr>
+                                <td>@row.ProductName</td>
+                                <td class="text-right">@row.PricePerBox.ToString("C")</td>
+                                <td class="text-center">@row.BoxesSold</td>
+                                <td class="text-right">@row.AmountOwed.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total</td>
+                            <td></td>
+                            <td class="text-center">@Model.ProductBreakdown.Sum(p => p.BoxesSold)</td>
+                            <td class="text-right text-purple">@Model.TotalFromSales.ToString("C")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+
+        <!-- By Girl Scout -->
+        @if (Model.ByScout.Any())
         {
-            <div class="no-data">
-                <p>No outstanding balances for the selected period.</p>
+            <div class="section">
+                <h3 class="section-title">By Girl Scout</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Girl Scout</th>
+                            <th class="text-center">Orders</th>
+                            <th class="text-center">Boxes</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var scout in Model.ByScout)
+                        {
+                            <tr>
+                                <td>@scout.ScoutName</td>
+                                <td class="text-center">@scout.OrderCount</td>
+                                <td class="text-center">@scout.TotalBoxes</td>
+                                <td class="text-right">@scout.TotalAmount.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         }
-        else
-        {
-            @foreach (var customer in Model.CustomerSummaries)
-            {
-                <div class="customer-section">
-                    <div class="customer-header">
-                        <span class="customer-name">@customer.CustomerName</span>
-                        <span class="customer-owed">Owes: @customer.TotalOwed.ToString("C")</span>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Order Date</th>
-                                <th>Products</th>
-                                <th class="text-right">Total</th>
-                                <th class="text-right">Paid</th>
-                                <th class="text-right">Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var order in customer.Orders)
-                            {
-                                var products = string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
-                                var balance = (order.TotalPrice ?? 0) - (order.PaidAmount ?? 0);
-                                <tr>
-                                    <td>@order.OrderedAt.ToString("MM/dd/yyyy")</td>
-                                    <td style="max-width:250px;white-space:normal">@products</td>
-                                    <td class="text-right">@order.TotalPrice?.ToString("C")</td>
-                                    <td class="text-right text-success">@((order.PaidAmount ?? 0).ToString("C"))</td>
-                                    <td class="text-right @(balance > 0 ? "text-danger" : "")">
-                                        <strong>@balance.ToString("C")</strong>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        }
+
+        <!-- Settlement Summary -->
+        <div class="section">
+            <h3 class="section-title">Settlement Summary</h3>
+            <table>
+                <tbody>
+                    <tr>
+                        <td>Total from Paid Orders (Delivered/Completed)</td>
+                        <td class="text-right">@Model.TotalFromSales.ToString("C")</td>
+                    </tr>
+                    @if (Model.TotalReturnedValue > 0)
+                    {
+                        <tr>
+                            <td>Less: Returns Credit</td>
+                            <td class="text-right text-success">-@Model.TotalReturnedValue.ToString("C")</td>
+                        </tr>
+                    }
+                    @if (Model.TotalPaidBack > 0)
+                    {
+                        <tr>
+                            <td>Less: Already Paid Back to Troop</td>
+                            <td class="text-right text-success">-@Model.TotalPaidBack.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><strong>Amount Owed to Troop</strong></td>
+                        <td class="text-right text-purple" style="font-size:16px"><strong>@Model.TotalOwedToTroop.ToString("C")</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
 
         <div class="footer">
-            <p>Girl Scout Cookie Order Tracker - Payback Report</p>
+            <p>Girl Scout Cookie Order Tracker - Troop Payback Report</p>
         </div>
     </div>
 </body>

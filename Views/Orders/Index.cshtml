@@ -155,12 +155,12 @@
                                 <col style="width:35px">  <!-- Checkbox -->
                                 <col style="width:90px">  <!-- Date -->
                                 <col style="width:100px"> <!-- Type -->
-                                <col style="width:120px"> <!-- Customer -->
+                                <col style="width:110px"> <!-- Customer -->
                                 <col style="width:100px"> <!-- Girl Scout -->
                                 <col style="width:120px"> <!-- Status -->
-                                <col style="width:55px">  <!-- Qty -->
+                                <col style="width:65px">  <!-- Paid -->
+                                <col style="width:50px">  <!-- Qty -->
                                 <col style="width:80px">  <!-- Total -->
-                                <col style="width:80px">  <!-- Paid -->
                                 <col style="width:90px">  <!-- Actions -->
                             </colgroup>
                             <thead>
@@ -171,9 +171,9 @@
                                     <th>Customer</th>
                                     <th>Girl Scout</th>
                                     <th>Status</th>
+                                    <th>Paid</th>
                                     <th>Qty</th>
                                     <th>Total</th>
-                                    <th>Paid</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -202,7 +202,7 @@
                                         <td>
                                             <select class="form-select form-select-sm status-select" data-order-id="@order.Id" style="width:110px;font-size:.75rem;padding:2px 4px">
                                                 @{
-                                                    var statuses = new[] { "Pending", "Confirmed", "Paid", "Delivered", "Completed", "Cancelled" };
+                                                    var statuses = new[] { "Pending", "Confirmed", "Delivered", "Completed", "Cancelled" };
                                                 }
                                                 @foreach (var s in statuses)
                                                 {
@@ -217,9 +217,21 @@
                                                 }
                                             </select>
                                         </td>
+                                        @{
+                                            var isPaid = (order.PaidAmount ?? 0) >= (order.TotalPrice ?? 0) && (order.TotalPrice ?? 0) > 0;
+                                        }
+                                        <td class="text-center">
+                                            @if (isPaid)
+                                            {
+                                                <span class="badge bg-success" style="font-size:.7rem"><i class="fa fa-check me-1"></i>Paid</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary" style="font-size:.7rem">Unpaid</span>
+                                            }
+                                        </td>
                                         <td class="text-center">@order.TotalQty</td>
                                         <td class="text-nowrap">@order.TotalPrice?.ToString("C")</td>
-                                        <td class="text-nowrap">@order.PaidAmount?.ToString("C")</td>
                                         <td class="text-nowrap">
                                             <button type="button" class="btn btn-xs btn-outline-primary detail-btn" data-order-id="@order.Id" title="View Details">
                                                 <i class="fa fa-eye"></i>
@@ -334,7 +346,6 @@
                         <select id="mdlStatus" class="form-select form-select-sm" style="width:160px">
                             <option value="Pending">Pending</option>
                             <option value="Confirmed">Confirmed</option>
-                            <option value="Paid">Paid</option>
                             <option value="Delivered">Delivered</option>
                             <option value="Completed">Completed</option>
                             <option value="Cancelled">Cancelled</option>
@@ -354,16 +365,23 @@
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-8">
+                    <div class="col-md-4">
                         <label class="form-label fw-bold">Notes</label>
                         <input id="mdlNotes" class="form-control form-control-sm" />
                     </div>
-                    <div class="col-md-2 text-end">
+                    <div class="col-md-3 text-end">
                         <label class="form-label fw-bold">Total</label>
                         <p id="mdlTotalPrice" class="mb-0 fs-5 fw-bold text-primary"></p>
                     </div>
-                    <div class="col-md-2 text-end">
-                        <label class="form-label fw-bold">Paid</label>
+                    <div class="col-md-2 text-center">
+                        <label class="form-label fw-bold d-block">Payment</label>
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="mdlPaidToggle" style="width:3em;height:1.5em;cursor:pointer">
+                            <label class="form-check-label fw-bold" id="mdlPaidLabel" for="mdlPaidToggle" style="cursor:pointer"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <label class="form-label fw-bold">Paid Amount</label>
                         <p id="mdlPaidAmount" class="mb-0 fs-5"></p>
                     </div>
                 </div>
@@ -544,6 +562,14 @@
             document.getElementById('mdlTotalPrice').textContent = '$' + (d.totalPrice || 0).toFixed(2);
             document.getElementById('mdlPaidAmount').textContent = '$' + (d.paidAmount || 0).toFixed(2);
 
+            // Payment toggle
+            var isPaid = (d.paidAmount || 0) >= (d.totalPrice || 0) && (d.totalPrice || 0) > 0;
+            var paidToggle = document.getElementById('mdlPaidToggle');
+            var paidLabel = document.getElementById('mdlPaidLabel');
+            paidToggle.checked = isPaid;
+            paidLabel.textContent = isPaid ? 'Paid' : 'Unpaid';
+            paidLabel.className = 'form-check-label fw-bold ' + (isPaid ? 'text-success' : 'text-danger');
+
             document.getElementById('mdlStatus').value = d.status || 'Pending';
             document.getElementById('mdlPaymentMethod').value = d.paymentMethod || 'Cash';
             document.getElementById('mdlNotes').value = d.notes || '';
@@ -650,6 +676,39 @@
             document.getElementById('mdlPaymentMethod').disabled = isCompleted;
             document.getElementById('mdlNotes').disabled = isCompleted;
             document.getElementById('mdlAddLineBtn').disabled = isCompleted;
+        });
+
+        // ── Payment toggle ──
+        document.getElementById('mdlPaidToggle').addEventListener('change', function () {
+            var markAsPaid = this.checked;
+            var label = document.getElementById('mdlPaidLabel');
+            fetch('@Url.Action("TogglePayment", "Orders")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({ orderId: currentOrderId, markAsPaid: markAsPaid })
+            }).then(function (r) {
+                if (r.ok) {
+                    return r.json().then(function (data) {
+                        document.getElementById('mdlPaidAmount').textContent = '$' + (data.paidAmount || 0).toFixed(2);
+                        label.textContent = markAsPaid ? 'Paid' : 'Unpaid';
+                        label.className = 'form-check-label fw-bold ' + (markAsPaid ? 'text-success' : 'text-danger');
+                        // Update the table row badge as well
+                        var row = document.querySelector('tr[data-order-id="' + currentOrderId + '"]');
+                        if (row) {
+                            var badgeTd = row.querySelectorAll('td')[6]; // Paid column (0-indexed)
+                            if (badgeTd) {
+                                badgeTd.innerHTML = markAsPaid
+                                    ? '<span class="badge bg-success" style="font-size:.7rem"><i class="fa fa-check me-1"></i>Paid</span>'
+                                    : '<span class="badge bg-secondary" style="font-size:.7rem">Unpaid</span>';
+                            }
+                        }
+                    });
+                } else {
+                    alert('Failed to update payment status.');
+                    // Revert the toggle
+                    document.getElementById('mdlPaidToggle').checked = !markAsPaid;
+                }
+            });
         });
     </script>
 }

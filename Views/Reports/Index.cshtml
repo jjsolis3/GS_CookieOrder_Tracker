@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <!-- Payback Report -->
+    <!-- Collections Report -->
     <div class="col-xl-4 col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-body">
@@ -39,12 +39,33 @@
                         <i class="fa fa-hand-holding-usd text-danger" style="font-size:1.3rem"></i>
                     </div>
                     <div>
-                        <h5 class="card-title mb-0">Payback Report</h5>
-                        <small class="text-muted">Collections Due</small>
+                        <h5 class="card-title mb-0">Collections Report</h5>
+                        <small class="text-muted">Outstanding Payments</small>
                     </div>
                 </div>
-                <p class="text-muted small">Track what customers owe and what needs to be collected. Shows outstanding balances.</p>
-                <a asp-action="Payback" class="btn btn-outline-danger btn-sm">
+                <p class="text-muted small">Track what customers owe and what needs to be collected. Shows outstanding balances by customer.</p>
+                <a asp-action="Collections" class="btn btn-outline-danger btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Troop Payback Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(111,66,193,.1)">
+                        <i class="fa fa-money-check-alt" style="font-size:1.3rem;color:#6f42c1"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Troop Payback</h5>
+                        <small class="text-muted">What We Owe the Troop</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Shows how much to pay back to the Girl Scout Troop for cookies sold. Based on paid, delivered/completed orders.</p>
+                <a asp-action="Payback" class="btn btn-sm" style="color:#6f42c1;border-color:#6f42c1">
                     <i class="fa fa-file-alt me-1"></i> View Report
                 </a>
             </div>

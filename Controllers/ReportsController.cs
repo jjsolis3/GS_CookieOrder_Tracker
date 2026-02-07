@@ -63,8 +63,8 @@ public class ReportsController : Controller
         return View(model);
     }
 
-    // ───────── PAYBACK / COLLECTION REPORT ─────────
-    public async Task<IActionResult> Payback(DateTime? dateFrom, DateTime? dateTo)
+    // ───────── COLLECTIONS REPORT (outstanding customer payments) ─────────
+    public async Task<IActionResult> Collections(DateTime? dateFrom, DateTime? dateTo)
     {
         var fromDate = dateFrom ?? DateTime.UtcNow.AddMonths(-1);
         var toDate = dateTo ?? DateTime.UtcNow;
@@ -107,6 +107,94 @@ public class ReportsController : Controller
             TotalOrdered = customerSummaries.Sum(c => c.TotalOrdered),
             TotalPaid = customerSummaries.Sum(c => c.TotalPaid),
             TotalOwed = customerSummaries.Sum(c => c.TotalOwed),
+            GeneratedAt = DateTime.Now
+        };
+
+        return View("Collections", model);
+    }
+
+    // ───────── PAYBACK REPORT (what we owe the troop for cookies sold) ─────────
+    public async Task<IActionResult> Payback(DateTime? dateFrom, DateTime? dateTo)
+    {
+        var fromDate = dateFrom ?? DateTime.UtcNow.AddMonths(-3);
+        var toDate = dateTo ?? DateTime.UtcNow;
+
+        var fromUtc = DateTime.SpecifyKind(fromDate.Date, DateTimeKind.Utc);
+        var toUtc = DateTime.SpecifyKind(toDate.Date.AddDays(1), DateTimeKind.Utc);
+
+        // Orders that are PAID (paid_amount >= total_price), Delivered or Completed,
+        // and NOT Online Delivery (those are already settled through the portal)
+        var qualifyingStatuses = new[] { "Delivered", "Completed" };
+
+        var orders = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .Where(o => o.OrderedAt >= fromUtc && o.OrderedAt < toUtc
+                && o.OrderType != "Online Delivery"
+                && o.OrderType != "Booth Sale"
+                && qualifyingStatuses.Contains(o.Status)
+                && o.PaidAmount != null && o.TotalPrice != null
+                && o.PaidAmount >= o.TotalPrice
+                && o.TotalPrice > 0)
+            .OrderBy(o => o.OrderedAt)
+            .ToListAsync();
+
+        // Aggregate by product
+        var productBreakdown = orders
+            .SelectMany(o => o.LineItems)
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .Select(g => new PaybackProductBreakdown
+            {
+                ProductName = g.Key.Name,
+                PricePerBox = g.Key.PricePerBox,
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                AmountOwed = g.Sum(li => li.QuantityBoxes * g.Key.PricePerBox)
+            })
+            .OrderBy(p => p.ProductName)
+            .ToList();
+
+        // Aggregate by Girl Scout
+        var byScout = orders
+            .GroupBy(o => new
+            {
+                ScoutId = o.GirlScoutId,
+                ScoutName = o.GirlScout != null ? $"{o.GirlScout.FirstName} {o.GirlScout.LastName}" : "Unassigned"
+            })
+            .Select(g => new PaybackScoutSummary
+            {
+                ScoutName = g.Key.ScoutName,
+                OrderCount = g.Count(),
+                TotalBoxes = g.Sum(o => o.TotalQty ?? 0),
+                TotalAmount = g.Sum(o => o.TotalPrice ?? 0)
+            })
+            .OrderByDescending(s => s.TotalAmount)
+            .ToList();
+
+        // Subtract returns value
+        var returnedValue = await _dbContext.InventoryReturns
+            .Include(r => r.Product)
+            .SumAsync(r => (decimal?)((r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase) * r.Product.PricePerBox)) ?? 0m;
+
+        // Total already paid back to the troop
+        var totalPaidBack = await _dbContext.Paybacks.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var totalFromSales = productBreakdown.Sum(p => p.AmountOwed);
+        var totalOwed = totalFromSales - returnedValue - totalPaidBack;
+        if (totalOwed < 0) totalOwed = 0;
+
+        var model = new TroopPaybackReportViewModel
+        {
+            DateFrom = fromDate,
+            DateTo = toDate,
+            ProductBreakdown = productBreakdown,
+            ByScout = byScout,
+            TotalFromSales = totalFromSales,
+            TotalReturnedValue = returnedValue,
+            TotalPaidBack = totalPaidBack,
+            TotalOwedToTroop = totalOwed,
+            TotalOrders = orders.Count,
+            TotalBoxes = orders.Sum(o => o.TotalQty ?? 0),
             GeneratedAt = DateTime.Now
         };
 
