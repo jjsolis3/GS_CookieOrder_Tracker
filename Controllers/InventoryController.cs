@@ -154,6 +154,13 @@ public class InventoryController : Controller
             .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
             .ToListAsync();
 
+        var soldOnline = await _dbContext.OrderLineItems
+            .Include(li => li.Order)
+            .Where(li => li.InventorySource == "Personal" && li.Order!.OrderType == "Online Delivery")
+            .GroupBy(li => li.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
+            .ToListAsync();
+
         var returned = await _dbContext.InventoryReturns
             .Include(r => r.Product)
             .GroupBy(r => new { r.ProductId, r.Product!.BoxesPerCase })
@@ -164,6 +171,7 @@ public class InventoryController : Controller
         {
             var sp = soldPersonal.FirstOrDefault(s => s.ProductId == r.ProductId);
             var st = soldTroop.FirstOrDefault(s => s.ProductId == r.ProductId);
+            var so = soldOnline.FirstOrDefault(s => s.ProductId == r.ProductId);
             var rt = returned.FirstOrDefault(s => s.ProductId == r.ProductId);
             return new ProductStockRow
             {
@@ -172,6 +180,7 @@ public class InventoryController : Controller
                 BoxesReceived = r.Boxes,
                 BoxesSoldPersonal = sp?.Boxes ?? 0,
                 BoxesSoldTroop = st?.Boxes ?? 0,
+                BoxesSoldOnline = so?.Boxes ?? 0,
                 BoxesReturned = rt?.Boxes ?? 0
             };
         }).OrderBy(p => p.ProductName).ToList();
