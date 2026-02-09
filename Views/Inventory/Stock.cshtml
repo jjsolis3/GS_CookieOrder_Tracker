@@ -81,8 +81,8 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th class="text-end">On Hand</th>
                                 <th class="text-end">Received</th>
+                                <th class="text-end">On Hand</th>                                
                                 <th class="text-end">Sold (Personal)</th>
                                 <th class="text-end">Sold (Troop)</th>
                                 <th class="text-end">Returned</th>                                
@@ -116,10 +116,10 @@
                             <tr class="fw-bold">
                                 <td>Totals</td>
                                 <td class="text-end">@Model.TotalBoxesReceived</td>
+                                <td class="text-end">@Model.TotalBoxesOnHand</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldPersonal)</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldTroop)</td>
-                                <td class="text-end">@Model.TotalBoxesReturned</td>
-                                <td class="text-end">@Model.TotalBoxesOnHand</td>
+                                <td class="text-end">@Model.TotalBoxesReturned</td>                                
                             </tr>
                         </tfoot>
                     </table>
