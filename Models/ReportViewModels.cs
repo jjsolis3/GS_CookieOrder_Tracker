@@ -21,6 +21,25 @@ public class ProductSummaryItem
     public decimal TotalValue { get; set; }
 }
 
+// ═══════════ ONLINE ORDERS REPORT ═══════════
+public class OnlineOrdersReportViewModel
+{
+    public List<Order> Orders { get; set; } = new();
+    public List<ProductSummaryItem> ProductSummary { get; set; } = new();
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+    public DateTime GeneratedAt { get; set; }
+}
+
+public class OnlineProductSummaryItem
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = "";
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+}
+
 // ═══════════ COLLECTIONS REPORT (outstanding customer payments) ═══════════
 public class PaybackReportViewModel
 {

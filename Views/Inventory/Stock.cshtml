@@ -84,8 +84,8 @@
                                 <th class="text-end">Received</th>
                                 <th class="text-end">On Hand</th>                                
                                 <th class="text-end">Sold (Personal)</th>
+                                <th class="text-end">Sold (Online)</th>
                                 <th class="text-end">Sold (Troop)</th>
-                                <th class="text-end">Online Delivery</th>
                                 <th class="text-end">Returned</th>
                             </tr>
                         </thead>
@@ -98,7 +98,6 @@
                                     <td class="text-end">@p.BoxesReceived</td>
                                     <td class="text-end"><strong class="@onHandClass">@p.BoxesOnHand</strong></td>
                                     <td class="text-end">@p.BoxesSoldPersonal</td>
-                                    <td class="text-end">@p.BoxesSoldTroop</td>
                                     <td class="text-end">
                                         @if (p.BoxesSoldOnline > 0)
                                         {
@@ -109,6 +108,7 @@
                                             <span>0</span>
                                         }
                                     </td>
+                                    <td class="text-end">@p.BoxesSoldTroop</td>
                                     <td class="text-end">
                                         @if (p.BoxesReturned > 0)
                                         {
@@ -129,8 +129,8 @@
                                 <td class="text-end">@Model.TotalBoxesReceived</td>
                                 <td class="text-end">@Model.TotalBoxesOnHand</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldPersonal)</td>
-                                <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldTroop)</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldOnline)</td>
+                                <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldTroop)</td>
                                 <td class="text-end">@Model.TotalBoxesReturned</td>
                             </tr>
                         </tfoot>

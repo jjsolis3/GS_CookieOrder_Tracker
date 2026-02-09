@@ -1,0 +1,234 @@
+@model GS_CookieOrder_Tracker.Models.OnlineOrdersReportViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Orders Fulfillment Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .report {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #ff9800;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 22px;
+            color: #ff9800;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 13px;
+        }
+        .summary-cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .summary-card {
+            flex: 1;
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e65100;
+        }
+        .summary-card .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        th {
+            background: #ff9800;
+            color: white;
+            padding: 8px 6px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover { background: #fffde7; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .total-row {
+            background: #fff3e0;
+            font-weight: bold;
+        }
+        .product-summary-table th { background: #2e7d32; }
+        .product-summary-table tr:hover { background: #e8f5e9; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 10px;
+        }
+        .print-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .print-buttons button, .print-buttons a {
+            padding: 10px 20px;
+            margin: 0 5px;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-print { background: #ff9800; color: white; }
+        .btn-back { background: #666; color: white; }
+        .btn-print:hover { background: #e65100; }
+        .btn-back:hover { background: #444; }
+        .no-data { text-align: center; color: #999; padding: 40px; }
+
+        @@media print {
+            body { background: white; padding: 0; }
+            .report { box-shadow: none; padding: 15px; max-width: 100%; }
+            .print-buttons { display: none; }
+            .summary-card { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-buttons">
+        <button class="btn-print" onclick="window.print()">Print Report</button>
+        <a href="@Url.Action("Index", "Reports")" class="btn-back">Back to Reports</a>
+    </div>
+
+    <div class="report">
+        <div class="header">
+            <h1>Online Orders Fulfillment Report</h1>
+            <div class="subtitle">Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="value">@Model.TotalOrders</div>
+                <div class="label">Pending Orders</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">@Model.TotalBoxes</div>
+                <div class="label">Boxes Needed</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">@Model.TotalValue.ToString("C")</div>
+                <div class="label">Total Value</div>
+            </div>
+        </div>
+
+        @if (!Model.ProductSummary.Any())
+        {
+            <div class="no-data">
+                <p>No pending orders to fulfill.</p>
+            </div>
+        }
+        else
+        {
+            <div class="section-title">Products Needed for Fulfillment</div>
+            <table class="product-summary-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-center">Boxes Needed</th>
+                        <th class="text-right">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var product in Model.ProductSummary)
+                    {
+                        <tr>
+                            <td><strong>@product.ProductName</strong></td>
+                            <td class="text-center">@product.TotalBoxes</td>
+                            <td class="text-right">@product.TotalValue.ToString("C")</td>
+                        </tr>
+                    }
+                    <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td class="text-center"><strong>@Model.TotalBoxes</strong></td>
+                        <td class="text-right"><strong>@Model.TotalValue.ToString("C")</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="section-title">Order Details</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order Date</th>
+                        <th>Delivery</th>
+                        <th>Customer</th>
+                        <th>Scout</th>
+                        <th>Products</th>
+                        <th class="text-center">Boxes</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model.Orders)
+                    {
+                        var products = string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
+                        <tr>
+                            <td>@order.OrderedAt.ToString("MM/dd")</td>
+                            <td>@(order.DeliveryDate?.ToString("MM/dd") ?? "—")</td>
+                            <td>@(order.Customer?.Name ?? "—")</td>
+                            <td>@(order.GirlScout != null ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}" : "—")</td>
+                            <td style="max-width:200px;white-space:normal">@products</td>
+                            <td class="text-center">@order.TotalQty</td>
+                            <td class="text-right">@order.TotalPrice?.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="footer">
+            <p>Girl Scout Cookie Order Tracker - Pending Orders Report</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -31,7 +31,7 @@ public class ReportsController : Controller
             .Include(o => o.Customer)
             .Include(o => o.GirlScout)
             .Include(o => o.LineItems).ThenInclude(li => li.Product)
-            .Where(o => pendingStatuses.Contains(o.Status) && o.OrderType != "Booth Sale")
+            .Where(o => pendingStatuses.Contains(o.Status) && o.OrderType == "Direct Sale")
             .OrderBy(o => o.DeliveryDate ?? DateOnly.MaxValue)
             .ThenBy(o => o.OrderedAt)
             .ToListAsync();
@@ -51,6 +51,47 @@ public class ReportsController : Controller
             .ToList();
 
         var model = new PendingOrdersReportViewModel
+        {
+            Orders = orders,
+            ProductSummary = productSummary,
+            TotalOrders = orders.Count,
+            TotalBoxes = productSummary.Sum(p => p.TotalBoxes),
+            TotalValue = productSummary.Sum(p => p.TotalValue),
+            GeneratedAt = DateTime.Now
+        };
+
+        return View(model);
+    }
+
+    // ───────── ONLINE ORDERS FULFILLMENT REPORT ─────────
+    public async Task<IActionResult> OnlineOrders()
+    {
+        var pendingStatuses = new[] { "Pending", "Confirmed" };
+
+        var orders = await _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .Where(o => pendingStatuses.Contains(o.Status) && o.OrderType == "Online Delivery")
+            .OrderBy(o => o.DeliveryDate ?? DateOnly.MaxValue)
+            .ThenBy(o => o.OrderedAt)
+            .ToListAsync();
+
+        // Aggregate products needed
+        var productSummary = orders
+            .SelectMany(o => o.LineItems)
+            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .Select(g => new ProductSummaryItem
+            {
+                ProductId = g.Key.ProductId,
+                ProductName = g.Key.Name ?? "Unknown",
+                TotalBoxes = g.Sum(li => li.QuantityBoxes),
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+            })
+            .OrderBy(p => p.ProductName)
+            .ToList();
+
+        var model = new OnlineOrdersReportViewModel
         {
             Orders = orders,
             ProductSummary = productSummary,

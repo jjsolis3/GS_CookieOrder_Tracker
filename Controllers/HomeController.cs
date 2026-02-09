@@ -70,7 +70,7 @@ public class HomeController : Controller
                 Revenue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
             })
             .OrderByDescending(r => r.BoxesSold)
-            .Take(5)
+            .Take(9)
             .ToListAsync();
 
         // Recent orders
