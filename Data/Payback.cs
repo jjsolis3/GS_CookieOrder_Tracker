@@ -13,8 +13,15 @@ public class Payback
     [Column("order_id")]
     public Guid? OrderId { get; set; }
 
+    [Column("product_id")]
+    public Guid? ProductId { get; set; }
+
     [Column("customer_id")]
     public Guid? CustomerId { get; set; }
+
+    /// <summary>Number of boxes for product-based paybacks (no matching order).</summary>
+    [Column("quantity_boxes")]
+    public int? QuantityBoxes { get; set; }
 
     [Column("paid_at")]
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
@@ -36,5 +43,6 @@ public class Payback
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public Order? Order { get; set; }
+    public Product? Product { get; set; }
     public Customer? Customer { get; set; }
 }

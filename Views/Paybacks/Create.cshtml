@@ -41,35 +41,93 @@
 
                 <hr>
 
-                <!-- Order Selection -->
+                <!-- ═══════════ ORDER-BASED PAYBACK ═══════════ -->
                 <h6 class="mb-3">Select Orders to Pay</h6>
-                <div id="paybackOrders">
-                    <div class="row align-items-end mb-2 payback-order-row" data-index="0">
-                        <div class="col-md-7">
-                            <label class="form-label">Order</label>
-                            <select class="form-select form-select-sm payback-order-select">
-                                <option value="">-- select order --</option>
-                                @foreach (var order in Model.Orders)
-                                {
-                                    <option value="@order.Value" data-amount="@Model.OrderAmounts.GetValueOrDefault(order.Value, 0)">@order.Text</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Amount</label>
-                            <input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" />
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-sm btn-outline-danger payback-remove-row" disabled>
-                                <i class="fa fa-times"></i>
-                            </button>
+                @if (!Model.Orders.Any())
+                {
+                    <div class="alert alert-success py-2 mb-3">
+                        <i class="fa fa-check-circle me-1"></i> All orders have been paid back.
+                    </div>
+                }
+                else
+                {
+                    <div id="paybackOrders">
+                        <div class="row align-items-end mb-2 payback-order-row" data-index="0">
+                            <div class="col-md-7">
+                                <label class="form-label">Order</label>
+                                <select class="form-select form-select-sm payback-order-select">
+                                    <option value="">-- select order --</option>
+                                    @foreach (var order in Model.Orders)
+                                    {
+                                        <option value="@order.Value" data-amount="@Model.OrderAmounts.GetValueOrDefault(order.Value, 0)">@order.Text</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Amount</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" />
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger payback-remove-row" disabled>
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="paybackAddOrder">
-                    <i class="fa fa-plus me-1"></i> Add Another Order
-                </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="paybackAddOrder">
+                        <i class="fa fa-plus me-1"></i> Add Another Order
+                    </button>
+                }
+
+                <p class="text-muted small mb-0">Only unpaid orders are shown. Orders already paid back are excluded.</p>
+
+                <hr>
+
+                <!-- ═══════════ PRODUCT-BASED PAYBACK ═══════════ -->
+                <h6 class="mb-3">Pay by Product <small class="text-muted fw-normal">(for payments without a matching order)</small></h6>
+                <p class="text-muted small mb-3">Select a product and enter the number of boxes to pay back. Use this for product-level payments that don't correspond to a specific order.</p>
+
+                <div class="row g-2 mb-3" id="productCardGrid">
+                    @foreach (var card in Model.ProductCards)
+                    {
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <div class="card product-payback-card border h-100"
+                                 data-product-id="@card.Id"
+                                 data-product-name="@card.Name"
+                                 data-price="@card.PricePerBox"
+                                 style="cursor:pointer; transition: all .15s ease;">
+                                <div class="card-body text-center p-2">
+                                    @if (!string.IsNullOrEmpty(card.ImagePath))
+                                    {
+                                        <img src="@card.ImagePath" alt="@card.Name" class="img-fluid mb-1" style="max-height:70px; object-fit:contain;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center mb-1" style="height:70px;">
+                                            <i class="fa fa-cookie-bite text-muted" style="font-size:1.8rem"></i>
+                                        </div>
+                                    }
+                                    <h6 class="mb-0 small">@card.Name</h6>
+                                    <small class="text-muted">@card.PricePerBox.ToString("C")/box</small>
+                                    <!-- Qty controls (hidden until selected) -->
+                                    <div class="product-qty-panel mt-2" style="display:none;">
+                                        <div class="input-group input-group-sm justify-content-center">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm product-qty-minus">
+                                                <i class="fa fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control form-control-sm text-center product-qty-input" value="0" min="0" style="max-width:60px;" />
+                                            <button type="button" class="btn btn-outline-secondary btn-sm product-qty-plus">
+                                                <i class="fa fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-primary fw-bold product-subtotal mt-1 d-block">$0.00</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
 
                 <hr>
 
@@ -90,98 +148,224 @@
     </div>
 </div>
 
+<style>
+    .product-payback-card.selected {
+        border-color: #7c3aed !important;
+        background: rgba(124, 58, 237, .06);
+        box-shadow: 0 0 0 2px #7c3aed;
+    }
+</style>
+
 @section Scripts {
     <script>
-        var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        var orderOptionsHtml = document.querySelector('.payback-order-select').innerHTML;
+        (function () {
+            'use strict';
 
-        // ── Auto-fill amount when order selected ──
-        document.getElementById('paybackOrders').addEventListener('change', function (e) {
-            if (e.target.classList.contains('payback-order-select')) {
-                var row = e.target.closest('.payback-order-row');
-                var amountInput = row.querySelector('.payback-amount');
-                var opt = e.target.options[e.target.selectedIndex];
-                var amount = parseFloat(opt?.dataset?.amount) || 0;
-                amountInput.value = amount > 0 ? amount.toFixed(2) : '';
-                recalcTotal();
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            var orderSelectEl = document.querySelector('.payback-order-select');
+            var orderOptionsHtml = orderSelectEl ? orderSelectEl.innerHTML : '';
+
+            // ══════════ ORDER-BASED SECTION ══════════
+
+            var ordersContainer = document.getElementById('paybackOrders');
+            if (ordersContainer) {
+                // Auto-fill amount when order selected
+                ordersContainer.addEventListener('change', function (e) {
+                    if (e.target.classList.contains('payback-order-select')) {
+                        var row = e.target.closest('.payback-order-row');
+                        var amountInput = row.querySelector('.payback-amount');
+                        var opt = e.target.options[e.target.selectedIndex];
+                        var amount = parseFloat(opt?.dataset?.amount) || 0;
+                        amountInput.value = amount > 0 ? amount.toFixed(2) : '';
+                        recalcTotal();
+                    }
+                });
+
+                ordersContainer.addEventListener('input', function (e) {
+                    if (e.target.classList.contains('payback-amount')) {
+                        recalcTotal();
+                    }
+                });
+
+                // Remove order row
+                ordersContainer.addEventListener('click', function (e) {
+                    var btn = e.target.closest('.payback-remove-row');
+                    if (!btn) return;
+                    btn.closest('.payback-order-row').remove();
+                    updateRemoveButtons();
+                    recalcTotal();
+                });
             }
-        });
 
-        document.getElementById('paybackOrders').addEventListener('input', function (e) {
-            if (e.target.classList.contains('payback-amount')) {
-                recalcTotal();
+            var addOrderBtn = document.getElementById('paybackAddOrder');
+            if (addOrderBtn) {
+                addOrderBtn.addEventListener('click', function () {
+                    var container = document.getElementById('paybackOrders');
+                    var idx = container.querySelectorAll('.payback-order-row').length;
+                    var div = document.createElement('div');
+                    div.className = 'row align-items-end mb-2 payback-order-row';
+                    div.dataset.index = idx;
+                    div.innerHTML =
+                        '<div class="col-md-7"><select class="form-select form-select-sm payback-order-select">' + orderOptionsHtml + '</select></div>' +
+                        '<div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" /></div>' +
+                        '<div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger payback-remove-row"><i class="fa fa-times"></i></button></div>';
+                    container.appendChild(div);
+                    updateRemoveButtons();
+                });
             }
-        });
 
-        function recalcTotal() {
-            var total = 0;
-            document.querySelectorAll('.payback-order-row').forEach(function (row) {
-                var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
-                total += amount;
-            });
-            document.getElementById('paybackTotal').textContent = '$' + total.toFixed(2);
-        }
+            function updateRemoveButtons() {
+                var rows = document.querySelectorAll('.payback-order-row');
+                if (!rows.length) return;
+                rows.forEach(function (row) {
+                    row.querySelector('.payback-remove-row').disabled = rows.length <= 1;
+                });
+            }
 
-        // ── Add order row ──
-        document.getElementById('paybackAddOrder').addEventListener('click', function () {
-            var container = document.getElementById('paybackOrders');
-            var idx = container.querySelectorAll('.payback-order-row').length;
-            var div = document.createElement('div');
-            div.className = 'row align-items-end mb-2 payback-order-row';
-            div.dataset.index = idx;
-            div.innerHTML =
-                '<div class="col-md-7"><select class="form-select form-select-sm payback-order-select">' + orderOptionsHtml + '</select></div>' +
-                '<div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control form-control-sm payback-amount" value="" placeholder="$0.00" /></div>' +
-                '<div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger payback-remove-row"><i class="fa fa-times"></i></button></div>';
-            container.appendChild(div);
-            updateRemoveButtons();
-        });
+            // ══════════ PRODUCT-BASED SECTION ══════════
 
-        // ── Remove order row ──
-        document.getElementById('paybackOrders').addEventListener('click', function (e) {
-            var btn = e.target.closest('.payback-remove-row');
-            if (!btn) return;
-            btn.closest('.payback-order-row').remove();
-            updateRemoveButtons();
-            recalcTotal();
-        });
+            var productGrid = document.getElementById('productCardGrid');
+            if (productGrid) {
+                // Click to select/deselect product card
+                productGrid.addEventListener('click', function (e) {
+                    var card = e.target.closest('.product-payback-card');
+                    if (!card) return;
+                    // Don't toggle if clicking inside qty controls
+                    if (e.target.closest('.product-qty-panel')) return;
 
-        function updateRemoveButtons() {
-            var rows = document.querySelectorAll('.payback-order-row');
-            rows.forEach(function (row) {
-                row.querySelector('.payback-remove-row').disabled = rows.length <= 1;
-            });
-        }
+                    var isSelected = card.classList.contains('selected');
+                    if (isSelected) {
+                        // Deselect
+                        card.classList.remove('selected');
+                        card.querySelector('.product-qty-panel').style.display = 'none';
+                        card.querySelector('.product-qty-input').value = '0';
+                        updateProductSubtotal(card);
+                        recalcTotal();
+                    } else {
+                        // Select
+                        card.classList.add('selected');
+                        card.querySelector('.product-qty-panel').style.display = '';
+                        var input = card.querySelector('.product-qty-input');
+                        if (parseInt(input.value) === 0) input.value = '1';
+                        updateProductSubtotal(card);
+                        recalcTotal();
+                    }
+                });
 
-        // ── Submit payment ──
-        document.getElementById('paybackSubmit').addEventListener('click', function () {
-            var items = [];
-            document.querySelectorAll('.payback-order-row').forEach(function (row) {
-                var orderId = row.querySelector('.payback-order-select').value;
-                var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
-                if (orderId && amount > 0) {
-                    items.push({ orderId: orderId, amount: amount });
+                // +/- buttons
+                productGrid.addEventListener('click', function (e) {
+                    var minusBtn = e.target.closest('.product-qty-minus');
+                    var plusBtn = e.target.closest('.product-qty-plus');
+                    if (!minusBtn && !plusBtn) return;
+                    var card = e.target.closest('.product-payback-card');
+                    var input = card.querySelector('.product-qty-input');
+                    var val = parseInt(input.value) || 0;
+                    if (minusBtn) {
+                        val = Math.max(0, val - 1);
+                        if (val === 0) {
+                            card.classList.remove('selected');
+                            card.querySelector('.product-qty-panel').style.display = 'none';
+                        }
+                    }
+                    if (plusBtn) val++;
+                    input.value = val;
+                    updateProductSubtotal(card);
+                    recalcTotal();
+                });
+
+                // Manual qty input
+                productGrid.addEventListener('input', function (e) {
+                    if (!e.target.classList.contains('product-qty-input')) return;
+                    var card = e.target.closest('.product-payback-card');
+                    updateProductSubtotal(card);
+                    recalcTotal();
+                });
+            }
+
+            function updateProductSubtotal(card) {
+                var price = parseFloat(card.dataset.price) || 0;
+                var qty = parseInt(card.querySelector('.product-qty-input').value) || 0;
+                var subtotal = price * qty;
+                card.querySelector('.product-subtotal').textContent = '$' + subtotal.toFixed(2);
+            }
+
+            // ══════════ TOTAL CALCULATION ══════════
+
+            function recalcTotal() {
+                var total = 0;
+
+                // Sum order-based amounts
+                document.querySelectorAll('.payback-order-row').forEach(function (row) {
+                    var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
+                    total += amount;
+                });
+
+                // Sum product-based amounts
+                document.querySelectorAll('.product-payback-card.selected').forEach(function (card) {
+                    var price = parseFloat(card.dataset.price) || 0;
+                    var qty = parseInt(card.querySelector('.product-qty-input').value) || 0;
+                    total += price * qty;
+                });
+
+                document.getElementById('paybackTotal').textContent = '$' + total.toFixed(2);
+            }
+
+            // ══════════ SUBMIT ══════════
+
+            document.getElementById('paybackSubmit').addEventListener('click', function () {
+                var items = [];
+                var productItems = [];
+
+                // Collect order-based items
+                document.querySelectorAll('.payback-order-row').forEach(function (row) {
+                    var select = row.querySelector('.payback-order-select');
+                    if (!select) return;
+                    var orderId = select.value;
+                    var amount = parseFloat(row.querySelector('.payback-amount').value) || 0;
+                    if (orderId && amount > 0) {
+                        items.push({ orderId: orderId, amount: amount });
+                    }
+                });
+
+                // Collect product-based items
+                document.querySelectorAll('.product-payback-card.selected').forEach(function (card) {
+                    var productId = card.dataset.productId;
+                    var qty = parseInt(card.querySelector('.product-qty-input').value) || 0;
+                    var price = parseFloat(card.dataset.price) || 0;
+                    var amount = price * qty;
+                    if (productId && qty > 0 && amount > 0) {
+                        productItems.push({ productId: productId, quantityBoxes: qty, amount: amount });
+                    }
+                });
+
+                if (items.length === 0 && productItems.length === 0) {
+                    alert('Select at least one order or product and enter an amount.');
+                    return;
                 }
-            });
 
-            if (items.length === 0) {
-                alert('Select at least one order and enter an amount.');
-                return;
-            }
+                // Check for duplicate order selections
+                var orderIds = items.map(function (i) { return i.orderId; });
+                var uniqueIds = new Set(orderIds);
+                if (uniqueIds.size < orderIds.length) {
+                    alert('The same order is selected more than once. Please remove duplicates.');
+                    return;
+                }
 
-            fetch('@Url.Action("CreateMultiple", "Paybacks")', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                body: JSON.stringify({
-                    paidAt: document.getElementById('paybackDate').value,
-                    method: document.getElementById('paybackMethod').value,
-                    notes: document.getElementById('paybackNotes').value || null,
-                    items: items
-                })
-            }).then(function (r) {
-                if (r.ok) window.location.href = '@Url.Action("Index", "Paybacks")';
-                else r.json().then(function (d) { alert(d.error || 'Failed to record payment.'); });
+                fetch('@Url.Action("CreateMultiple", "Paybacks")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        paidAt: document.getElementById('paybackDate').value,
+                        method: document.getElementById('paybackMethod').value,
+                        notes: document.getElementById('paybackNotes').value || null,
+                        items: items,
+                        productItems: productItems.length > 0 ? productItems : null
+                    })
+                }).then(function (r) {
+                    if (r.ok) window.location.href = '@Url.Action("Index", "Paybacks")';
+                    else r.json().then(function (d) { alert(d.error || 'Failed to record payment.'); });
+                });
             });
-        });
+        })();
     </script>
 }

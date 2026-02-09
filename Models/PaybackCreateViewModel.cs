@@ -20,4 +20,7 @@ public class PaybackCreateViewModel
 
     // Order amounts for JS auto-fill (OrderId -> TotalPrice)
     public Dictionary<string, decimal> OrderAmounts { get; set; } = new();
+
+    // Product cards for product-based payback (no matching order)
+    public List<ProductCardItem> ProductCards { get; set; } = new();
 }

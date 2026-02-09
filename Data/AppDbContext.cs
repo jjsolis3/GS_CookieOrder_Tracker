@@ -48,6 +48,11 @@ public class AppDbContext : DbContext
             .HasForeignKey(payback => payback.OrderId);
 
         modelBuilder.Entity<Payback>()
+            .HasOne(payback => payback.Product)
+            .WithMany(product => product.Paybacks)
+            .HasForeignKey(payback => payback.ProductId);
+
+        modelBuilder.Entity<Payback>()
             .HasOne(payback => payback.Customer)
             .WithMany(customer => customer.Paybacks)
             .HasForeignKey(payback => payback.CustomerId);
