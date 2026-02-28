@@ -495,18 +495,17 @@
                 </thead>
                 <tbody>
                     @{ var saleNum = 1; }
-                    @foreach (var order in Model.Orders)
+                    @foreach (var sale in Model.Sales)
                     {
-                        var products = string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
-                        var scoutName = order.GirlScout != null ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}" : "—";
+                        var products = string.Join(", ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"));
                         <tr>
                             <td>@saleNum</td>
-                            <td>@order.CreatedAt.ToString("h:mm tt")</td>
-                            <td>@scoutName</td>
+                            <td>@sale.CreatedAt.ToString("h:mm tt")</td>
+                            <td>@(sale.ScoutName ?? "—")</td>
                             <td style="max-width:200px;white-space:normal;font-size:10px">@products</td>
-                            <td>@order.PaymentMethod</td>
-                            <td class="text-center">@order.TotalQty</td>
-                            <td class="text-right">@order.TotalPrice?.ToString("C")</td>
+                            <td>@sale.PaymentMethod</td>
+                            <td class="text-center">@sale.TotalQty</td>
+                            <td class="text-right">@sale.TotalPrice.ToString("C")</td>
                         </tr>
                         saleNum++;
                     }

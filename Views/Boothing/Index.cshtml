@@ -126,7 +126,7 @@
         <div class="col-4">
             <div class="card">
                 <div class="card-body text-center py-2">
-                    <h4 class="text-primary mb-0" id="kpiSaleCount">@Model.Orders.Count</h4>
+                    <h4 class="text-primary mb-0" id="kpiSaleCount">@Model.Sales.Count</h4>
                     <small class="text-muted">Sales</small>
                 </div>
             </div>
@@ -278,8 +278,8 @@
             <h5 class="card-title mb-0">Session Sales</h5>
         </div>
         <div class="card-body">
-            <div id="salesEmpty" class="text-muted text-center py-3 @(Model.Orders.Any() ? "d-none" : "")">No sales yet. Tap a cookie above to start selling!</div>
-            <div class="table-responsive @(!Model.Orders.Any() ? "d-none" : "")" id="salesTableWrap">
+            <div id="salesEmpty" class="text-muted text-center py-3 @(Model.Sales.Any() ? "d-none" : "")">No sales yet. Tap a cookie above to start selling!</div>
+            <div class="table-responsive @(!Model.Sales.Any() ? "d-none" : "")" id="salesTableWrap">
                 <table class="table table-sm table-hover mb-0">
                     <thead>
                         <tr>
@@ -294,24 +294,21 @@
                         </tr>
                     </thead>
                     <tbody id="salesTableBody">
-                        @{ var counter = Model.Orders.Count; }
-                        @foreach (var order in Model.Orders)
+                        @{ var counter = Model.Sales.Count; }
+                        @foreach (var sale in Model.Sales)
                         {
-                            var scoutName = order.GirlScout != null
-                                ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}"
-                                : "";
                             <tr>
                                 <td>@counter</td>
-                                <td class="text-nowrap"><small>@order.CreatedAt.ToString("h:mm tt")</small></td>
+                                <td class="text-nowrap"><small>@sale.CreatedAt.ToString("h:mm tt")</small></td>
                                 <td style="white-space:normal;word-break:break-word">
-                                    <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
+                                    <small>@string.Join(", ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"))</small>
                                 </td>
-                                <td><small>@scoutName</small></td>
-                                <td><small>@order.PaymentMethod</small></td>
-                                <td class="text-center">@order.TotalQty</td>
-                                <td class="text-end text-nowrap"><strong>@order.TotalPrice?.ToString("C")</strong></td>
+                                <td><small>@(sale.ScoutName ?? "")</small></td>
+                                <td><small>@sale.PaymentMethod</small></td>
+                                <td class="text-center">@sale.TotalQty</td>
+                                <td class="text-end text-nowrap"><strong>@sale.TotalPrice.ToString("C")</strong></td>
                                 <td>
-                                    <button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="@order.Id" title="Edit">
+                                    <button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-sale-group-id="@sale.SaleGroupId" title="Edit">
                                         <i class="fa fa-pencil"></i>
                                     </button>
                                 </td>
@@ -420,7 +417,7 @@
             // Page state
             var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
             var sessionId = '@(hasSession ? Model.ActiveSession!.Id.ToString() : "")';
-            var currentSaleCount = parseInt('@Model.Orders.Count') || 0;
+            var currentSaleCount = parseInt('@Model.Sales.Count') || 0;
             var cart = {};
 
             console.log('[BoothSales] Session ID:', sessionId || '(none)');
@@ -725,7 +722,7 @@
                         '<td><small>' + escapeHtml(sale.paymentMethod) + '</small></td>' +
                         '<td class="text-center">' + sale.totalQty + '</td>' +
                         '<td class="text-end text-nowrap"><strong>$' + sale.totalPrice.toFixed(2) + '</strong></td>' +
-                        '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
+                        '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-sale-group-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
                     tbody.insertBefore(tr, tbody.firstChild);
                 }
             }
@@ -800,13 +797,13 @@
             }
 
             // ══════════ EDIT SALE MODAL ══════════
-            var editOrderId = null;
+            var editSaleGroupId = null;
             var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { id = p.Id.ToString(), name = p.Name, pricePerBox = p.PricePerBox })));
 
-            function openEditModal(orderId) {
-                editOrderId = orderId;
+            function openEditModal(saleGroupId) {
+                editSaleGroupId = saleGroupId;
 
-                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
+                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editSaleGroupId)
                     .then(function(r) { return r.json(); })
                     .then(function(d) {
                         var payMethodEl = getEl('editPayMethod');
@@ -865,8 +862,8 @@
             // Edit button click delegation
             document.addEventListener('click', function(e) {
                 var editBtn = e.target.closest('.sale-edit-btn');
-                if (editBtn && editBtn.dataset.orderId) {
-                    openEditModal(editBtn.dataset.orderId);
+                if (editBtn && editBtn.dataset.saleGroupId) {
+                    openEditModal(editBtn.dataset.saleGroupId);
                 }
             });
 
@@ -879,7 +876,7 @@
             var editSaveBtn = getEl('editSaveBtn');
             if (editSaveBtn) {
                 editSaveBtn.onclick = function() {
-                    if (!editOrderId) return;
+                    if (!editSaleGroupId) return;
 
                     var items = [];
                     getAll('.edit-line').forEach(function(row) {
@@ -898,7 +895,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                         body: JSON.stringify({
-                            orderId: editOrderId,
+                            saleGroupId: editSaleGroupId,
                             paymentMethod: payMethodEl ? payMethodEl.value : 'Cash',
                             notes: notesEl ? (notesEl.value || null) : null,
                             girlScoutId: girlScoutId,
@@ -914,13 +911,13 @@
             var editDeleteBtn = getEl('editDeleteBtn');
             if (editDeleteBtn) {
                 editDeleteBtn.onclick = function() {
-                    if (!editOrderId) return;
+                    if (!editSaleGroupId) return;
                     if (!confirm('Delete this sale? This cannot be undone.')) return;
 
                     fetch('@Url.Action("DeleteSale", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                        body: JSON.stringify({ orderId: editOrderId })
+                        body: JSON.stringify({ saleGroupId: editSaleGroupId })
                     }).then(function(r) {
                         if (r.ok) location.reload();
                         else r.json().then(function(d) { alert(d.error || 'Failed to delete.'); });

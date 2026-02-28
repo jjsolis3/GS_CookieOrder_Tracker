@@ -197,8 +197,8 @@ public class BoothReportViewModel
     // Per-scout breakdown
     public List<BoothScoutSummary> ScoutBreakdown { get; set; } = new();
 
-    // Individual sales
-    public List<Order> Orders { get; set; } = new();
+    // Individual sales (grouped from booth_sales rows)
+    public List<BoothSaleDisplay> Sales { get; set; } = new();
 
     // Payment method breakdown
     public List<BoothPaymentSummary> PaymentBreakdown { get; set; } = new();

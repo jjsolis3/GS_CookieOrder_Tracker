@@ -149,14 +149,14 @@ public class ReportsController : Controller
     {
         // Load all sessions for the selector dropdown
         var allSessions = await _dbContext.BoothSessions
-            .Include(s => s.Orders)
+            .Include(s => s.BoothSales)
             .OrderByDescending(s => s.StartedAt)
             .ToListAsync();
 
         var sessionOptions = allSessions.Select(s => new BoothSessionOption
         {
             Id = s.Id,
-            Label = $"{s.StartedAt:yyyy-MM-dd} — {s.Location} ({s.Orders.Count} sales, {s.Orders.Sum(o => o.TotalQty ?? 0)} boxes)"
+            Label = $"{s.StartedAt:yyyy-MM-dd} — {s.Location} ({s.BoothSales.Select(bs => bs.SaleGroupId).Distinct().Count()} sales, {s.BoothSales.Sum(bs => bs.QuantityBoxes)} boxes)"
         }).ToList();
 
         var vm = new BoothReportViewModel
@@ -173,12 +173,38 @@ public class ReportsController : Controller
             if (session == null)
                 return View(vm);
 
-            var orders = await _dbContext.Orders
-                .Include(o => o.LineItems).ThenInclude(li => li.Product)
-                .Include(o => o.GirlScout)
-                .Where(o => o.BoothSessionId == sessionId.Value)
-                .OrderBy(o => o.CreatedAt)
+            var boothSales = await _dbContext.BoothSales
+                .Include(bs => bs.Product)
+                .Include(bs => bs.GirlScout)
+                .Where(bs => bs.BoothSessionId == sessionId.Value)
+                .OrderBy(bs => bs.CreatedAt)
                 .ToListAsync();
+
+            // Group booth sale rows into sale transactions
+            var sales = boothSales
+                .GroupBy(bs => bs.SaleGroupId ?? bs.Id)
+                .Select(g => new BoothSaleDisplay
+                {
+                    SaleGroupId = g.Key,
+                    CreatedAt = g.Min(bs => bs.CreatedAt),
+                    PaymentMethod = g.First().PaymentMethod,
+                    ScoutName = g.First().GirlScout != null
+                        ? $"{g.First().GirlScout!.FirstName} {g.First().GirlScout!.LastName}"
+                        : null,
+                    GirlScoutId = g.First().GirlScoutId,
+                    Notes = g.First().Notes,
+                    TotalQty = g.Sum(bs => bs.QuantityBoxes),
+                    TotalPrice = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+                    LineItems = g.Select(bs => new BoothSaleLineItem
+                    {
+                        ProductId = bs.ProductId,
+                        ProductName = bs.Product?.Name ?? "Unknown",
+                        QuantityBoxes = bs.QuantityBoxes,
+                        UnitPrice = bs.UnitPrice
+                    }).ToList()
+                })
+                .OrderBy(s => s.CreatedAt)
+                .ToList();
 
             // Session info
             vm.Location = session.Location;
@@ -200,20 +226,19 @@ public class ReportsController : Controller
             }
 
             // KPIs
-            vm.TotalSales = orders.Count;
-            vm.TotalBoxes = orders.Sum(o => o.TotalQty ?? 0);
-            vm.TotalRevenue = orders.Sum(o => o.TotalPrice ?? 0);
-            vm.Orders = orders;
+            vm.TotalSales = sales.Count;
+            vm.TotalBoxes = boothSales.Sum(bs => bs.QuantityBoxes);
+            vm.TotalRevenue = boothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice);
+            vm.Sales = sales;
 
-            // Product summary (from order line items)
-            vm.ProductSummary = orders
-                .SelectMany(o => o.LineItems)
-                .GroupBy(li => li.Product?.Name ?? "Unknown")
+            // Product summary (from booth_sales rows)
+            vm.ProductSummary = boothSales
+                .GroupBy(bs => bs.Product?.Name ?? "Unknown")
                 .Select(g => new BoothProductSummary
                 {
                     ProductName = g.Key,
-                    BoxesSold = g.Sum(li => li.QuantityBoxes),
-                    Revenue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                    BoxesSold = g.Sum(bs => bs.QuantityBoxes),
+                    Revenue = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
                 })
                 .OrderBy(p => p.ProductName)
                 .ToList();
@@ -233,27 +258,27 @@ public class ReportsController : Controller
                 .ToListAsync();
 
             // Per-scout breakdown
-            vm.ScoutBreakdown = orders
-                .Where(o => o.GirlScout != null)
-                .GroupBy(o => $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}")
+            vm.ScoutBreakdown = boothSales
+                .Where(bs => bs.GirlScout != null)
+                .GroupBy(bs => $"{bs.GirlScout!.FirstName} {bs.GirlScout.LastName}")
                 .Select(g => new BoothScoutSummary
                 {
                     ScoutName = g.Key,
-                    SaleCount = g.Count(),
-                    TotalBoxes = g.Sum(o => o.TotalQty ?? 0),
-                    TotalRevenue = g.Sum(o => o.TotalPrice ?? 0)
+                    SaleCount = g.Select(bs => bs.SaleGroupId).Distinct().Count(),
+                    TotalBoxes = g.Sum(bs => bs.QuantityBoxes),
+                    TotalRevenue = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
                 })
                 .OrderByDescending(s => s.TotalBoxes)
                 .ToList();
 
             // Payment method breakdown
-            vm.PaymentBreakdown = orders
-                .GroupBy(o => o.PaymentMethod ?? "Unknown")
+            vm.PaymentBreakdown = boothSales
+                .GroupBy(bs => bs.PaymentMethod ?? "Unknown")
                 .Select(g => new BoothPaymentSummary
                 {
                     Method = g.Key,
-                    Count = g.Count(),
-                    Total = g.Sum(o => o.TotalPrice ?? 0)
+                    Count = g.Select(bs => bs.SaleGroupId).Distinct().Count(),
+                    Total = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
                 })
                 .OrderByDescending(p => p.Total)
                 .ToList();

@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<InventoryReturn> InventoryReturns => Set<InventoryReturn>();
     public DbSet<BoothSession> BoothSessions => Set<BoothSession>();
     public DbSet<BoothInventory> BoothInventories => Set<BoothInventory>();
+    public DbSet<BoothSale> BoothSales => Set<BoothSale>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,5 +92,20 @@ public class AppDbContext : DbContext
             .HasOne(bi => bi.Product)
             .WithMany()
             .HasForeignKey(bi => bi.ProductId);
+
+        modelBuilder.Entity<BoothSale>()
+            .HasOne(bs => bs.BoothSession)
+            .WithMany(session => session.BoothSales)
+            .HasForeignKey(bs => bs.BoothSessionId);
+
+        modelBuilder.Entity<BoothSale>()
+            .HasOne(bs => bs.Product)
+            .WithMany()
+            .HasForeignKey(bs => bs.ProductId);
+
+        modelBuilder.Entity<BoothSale>()
+            .HasOne(bs => bs.GirlScout)
+            .WithMany()
+            .HasForeignKey(bs => bs.GirlScoutId);
     }
 }

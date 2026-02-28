@@ -34,5 +34,6 @@ public class BoothSession
 
     // Navigation properties
     public List<Order> Orders { get; set; } = new();
+    public List<BoothSale> BoothSales { get; set; } = new();
     public List<BoothInventory> Inventory { get; set; } = new();
 }
