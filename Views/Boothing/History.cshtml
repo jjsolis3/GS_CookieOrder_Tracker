@@ -118,6 +118,9 @@
                                     <a href="@Url.Action("ExportCsv", "Boothing", new { sessionId = s.Id })" class="btn btn-xs btn-outline-success" title="Export CSV">
                                         <i class="fa fa-download"></i>
                                     </a>
+                                    <a href="@Url.Action("BoothReport", "Reports", new { sessionId = s.Id })" class="btn btn-xs btn-outline-warning" title="Print Report" target="_blank">
+                                        <i class="fa fa-print"></i>
+                                    </a>
                                 </td>
                             </tr>
                         }

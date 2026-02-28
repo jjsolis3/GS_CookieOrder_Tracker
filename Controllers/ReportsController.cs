@@ -144,6 +144,124 @@ public class ReportsController : Controller
         return View(model);
     }
 
+    // ───────── BOOTH SESSION REPORT ─────────
+    public async Task<IActionResult> BoothReport(Guid? sessionId)
+    {
+        // Load all sessions for the selector dropdown
+        var allSessions = await _dbContext.BoothSessions
+            .Include(s => s.Orders)
+            .OrderByDescending(s => s.StartedAt)
+            .ToListAsync();
+
+        var sessionOptions = allSessions.Select(s => new BoothSessionOption
+        {
+            Id = s.Id,
+            Label = $"{s.StartedAt:yyyy-MM-dd} — {s.Location} ({s.Orders.Count} sales, {s.Orders.Sum(o => o.TotalQty ?? 0)} boxes)"
+        }).ToList();
+
+        var vm = new BoothReportViewModel
+        {
+            AvailableSessions = sessionOptions,
+            SelectedSessionId = sessionId,
+            GeneratedAt = DateTime.Now
+        };
+
+        // If a session is selected, load its data
+        if (sessionId.HasValue)
+        {
+            var session = allSessions.FirstOrDefault(s => s.Id == sessionId.Value);
+            if (session == null)
+                return View(vm);
+
+            var orders = await _dbContext.Orders
+                .Include(o => o.LineItems).ThenInclude(li => li.Product)
+                .Include(o => o.GirlScout)
+                .Where(o => o.BoothSessionId == sessionId.Value)
+                .OrderBy(o => o.CreatedAt)
+                .ToListAsync();
+
+            // Session info
+            vm.Location = session.Location;
+            vm.StartedAt = session.StartedAt;
+            vm.EndedAt = session.EndedAt;
+            vm.ScoutCount = session.ScoutCount;
+            vm.SessionNotes = session.Notes;
+
+            if (session.EndedAt.HasValue)
+            {
+                var dur = session.EndedAt.Value - session.StartedAt;
+                vm.Duration = dur.TotalHours >= 1
+                    ? $"{(int)dur.TotalHours}h {dur.Minutes}m"
+                    : $"{(int)dur.TotalMinutes}m";
+            }
+            else
+            {
+                vm.Duration = "Active";
+            }
+
+            // KPIs
+            vm.TotalSales = orders.Count;
+            vm.TotalBoxes = orders.Sum(o => o.TotalQty ?? 0);
+            vm.TotalRevenue = orders.Sum(o => o.TotalPrice ?? 0);
+            vm.Orders = orders;
+
+            // Product summary (from order line items)
+            vm.ProductSummary = orders
+                .SelectMany(o => o.LineItems)
+                .GroupBy(li => li.Product?.Name ?? "Unknown")
+                .Select(g => new BoothProductSummary
+                {
+                    ProductName = g.Key,
+                    BoxesSold = g.Sum(li => li.QuantityBoxes),
+                    Revenue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                })
+                .OrderBy(p => p.ProductName)
+                .ToList();
+
+            // Booth inventory (starting vs sold vs remaining)
+            vm.InventorySummary = await _dbContext.BoothInventories
+                .Include(bi => bi.Product)
+                .Where(bi => bi.BoothSessionId == sessionId.Value)
+                .OrderBy(bi => bi.Product!.Name)
+                .Select(bi => new BoothInventorySummary
+                {
+                    ProductName = bi.Product!.Name,
+                    Starting = bi.StartingQuantity,
+                    Sold = bi.SoldQuantity,
+                    Remaining = bi.StartingQuantity - bi.SoldQuantity
+                })
+                .ToListAsync();
+
+            // Per-scout breakdown
+            vm.ScoutBreakdown = orders
+                .Where(o => o.GirlScout != null)
+                .GroupBy(o => $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}")
+                .Select(g => new BoothScoutSummary
+                {
+                    ScoutName = g.Key,
+                    SaleCount = g.Count(),
+                    TotalBoxes = g.Sum(o => o.TotalQty ?? 0),
+                    TotalRevenue = g.Sum(o => o.TotalPrice ?? 0)
+                })
+                .OrderByDescending(s => s.TotalBoxes)
+                .ToList();
+
+            // Payment method breakdown
+            vm.PaymentBreakdown = orders
+                .GroupBy(o => o.PaymentMethod ?? "Unknown")
+                .Select(g => new BoothPaymentSummary
+                {
+                    Method = g.Key,
+                    Count = g.Count(),
+                    Total = g.Sum(o => o.TotalPrice ?? 0)
+                })
+                .OrderByDescending(p => p.Total)
+                .ToList();
+        }
+
+        return View(vm);
+    }
+
     // ───────── ONLINE ORDERS FULFILLMENT REPORT ─────────
     public async Task<IActionResult> OnlineOrders()
     {

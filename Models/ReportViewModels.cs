@@ -167,3 +167,78 @@ public class OrderSummaryReportViewModel
     public string? DateTo { get; set; }
     public string FilterDescription { get; set; } = "";
 }
+
+// ═══════════ BOOTH SESSION REPORT ═══════════
+public class BoothReportViewModel
+{
+    // Session selector (for the filter bar)
+    public List<BoothSessionOption> AvailableSessions { get; set; } = new();
+    public Guid? SelectedSessionId { get; set; }
+
+    // Session info
+    public string? Location { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? EndedAt { get; set; }
+    public int ScoutCount { get; set; }
+    public string? SessionNotes { get; set; }
+    public string Duration { get; set; } = "";
+
+    // KPIs
+    public int TotalSales { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalRevenue { get; set; }
+
+    // Product summary (boxes sold)
+    public List<BoothProductSummary> ProductSummary { get; set; } = new();
+
+    // Booth inventory (starting vs sold vs remaining)
+    public List<BoothInventorySummary> InventorySummary { get; set; } = new();
+
+    // Per-scout breakdown
+    public List<BoothScoutSummary> ScoutBreakdown { get; set; } = new();
+
+    // Individual sales
+    public List<Order> Orders { get; set; } = new();
+
+    // Payment method breakdown
+    public List<BoothPaymentSummary> PaymentBreakdown { get; set; } = new();
+
+    public DateTime GeneratedAt { get; set; }
+    public bool HasData => SelectedSessionId.HasValue && TotalSales > 0;
+}
+
+public class BoothSessionOption
+{
+    public Guid Id { get; set; }
+    public string Label { get; set; } = "";
+}
+
+public class BoothProductSummary
+{
+    public string ProductName { get; set; } = "";
+    public int BoxesSold { get; set; }
+    public decimal Revenue { get; set; }
+}
+
+public class BoothInventorySummary
+{
+    public string ProductName { get; set; } = "";
+    public int Starting { get; set; }
+    public int Sold { get; set; }
+    public int Remaining { get; set; }
+}
+
+public class BoothScoutSummary
+{
+    public string ScoutName { get; set; } = "";
+    public int SaleCount { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalRevenue { get; set; }
+}
+
+public class BoothPaymentSummary
+{
+    public string Method { get; set; } = "";
+    public int Count { get; set; }
+    public decimal Total { get; set; }
+}

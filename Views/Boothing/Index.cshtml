@@ -107,6 +107,12 @@
                     <a href="@csvUrl" class="btn btn-outline-success btn-sm">
                         <i class="fa fa-file-csv me-1"></i> Export
                     </a>
+                    @if (Model.ActiveSession != null)
+                    {
+                        <a href="@Url.Action("BoothReport", "Reports", new { sessionId = Model.ActiveSession.Id })" class="btn btn-outline-warning btn-sm" target="_blank">
+                            <i class="fa fa-print me-1"></i> Print Report
+                        </a>
+                    }
                     <button type="button" class="btn btn-outline-danger btn-sm" id="endSessionBtn" data-session-id="@Model.ActiveSession!.Id">
                         <i class="fa fa-stop me-1"></i> End Session
                     </button>
