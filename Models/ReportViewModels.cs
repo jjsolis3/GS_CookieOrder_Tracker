@@ -148,3 +148,22 @@ public class ProductStockLevel
     public int TotalSold { get; set; }
     public int TotalReturned { get; set; }
 }
+
+// ═══════════ ORDER SUMMARY REPORT (custom search/filter) ═══════════
+public class OrderSummaryReportViewModel
+{
+    public List<Order> Orders { get; set; } = new();
+    public List<ProductSummaryItem> ProductSummary { get; set; } = new();
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+    public DateTime GeneratedAt { get; set; }
+
+    // Filter state (for display)
+    public string? CustomerSearch { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? OrderTypeFilter { get; set; }
+    public string? DateFrom { get; set; }
+    public string? DateTo { get; set; }
+    public string FilterDescription { get; set; } = "";
+}

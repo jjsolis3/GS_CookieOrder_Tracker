@@ -63,6 +63,87 @@ public class ReportsController : Controller
         return View(model);
     }
 
+    // ───────── ORDER SUMMARY REPORT (custom search/filter) ─────────
+    public async Task<IActionResult> OrderSummary(string? customer, string? status, string? orderType, string? dateFrom, string? dateTo)
+    {
+        var query = _dbContext.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.GirlScout)
+            .Include(o => o.LineItems).ThenInclude(li => li.Product)
+            .AsQueryable();
+
+        // Customer name search (case-insensitive partial match)
+        if (!string.IsNullOrWhiteSpace(customer))
+        {
+            var search = customer.Trim().ToLower();
+            query = query.Where(o => o.Customer != null && o.Customer.Name.ToLower().Contains(search));
+        }
+
+        // Status filter
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(o => o.Status == status);
+
+        // Order type filter
+        if (!string.IsNullOrWhiteSpace(orderType))
+            query = query.Where(o => o.OrderType == orderType);
+
+        // Date range filter
+        if (!string.IsNullOrWhiteSpace(dateFrom) && DateOnly.TryParse(dateFrom, out var dfrom))
+        {
+            var fromUtc = DateTime.SpecifyKind(dfrom.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(o => o.OrderedAt >= fromUtc);
+        }
+        if (!string.IsNullOrWhiteSpace(dateTo) && DateOnly.TryParse(dateTo, out var dto))
+        {
+            var toUtc = DateTime.SpecifyKind(dto.ToDateTime(TimeOnly.MinValue).AddDays(1), DateTimeKind.Utc);
+            query = query.Where(o => o.OrderedAt < toUtc);
+        }
+
+        var orders = await query
+            .OrderBy(o => o.DeliveryDate ?? DateOnly.MaxValue)
+            .ThenBy(o => o.OrderedAt)
+            .ToListAsync();
+
+        var productSummary = orders
+            .SelectMany(o => o.LineItems)
+            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .Select(g => new ProductSummaryItem
+            {
+                ProductId = g.Key.ProductId,
+                ProductName = g.Key.Name ?? "Unknown",
+                TotalBoxes = g.Sum(li => li.QuantityBoxes),
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+            })
+            .OrderBy(p => p.ProductName)
+            .ToList();
+
+        // Build human-readable filter description
+        var filters = new List<string>();
+        if (!string.IsNullOrWhiteSpace(customer)) filters.Add($"Customer: \"{customer}\"");
+        if (!string.IsNullOrWhiteSpace(status)) filters.Add($"Status: {status}");
+        if (!string.IsNullOrWhiteSpace(orderType)) filters.Add($"Type: {orderType}");
+        if (!string.IsNullOrWhiteSpace(dateFrom)) filters.Add($"From: {dateFrom}");
+        if (!string.IsNullOrWhiteSpace(dateTo)) filters.Add($"To: {dateTo}");
+
+        var model = new OrderSummaryReportViewModel
+        {
+            Orders = orders,
+            ProductSummary = productSummary,
+            TotalOrders = orders.Count,
+            TotalBoxes = productSummary.Sum(p => p.TotalBoxes),
+            TotalValue = productSummary.Sum(p => p.TotalValue),
+            GeneratedAt = DateTime.Now,
+            CustomerSearch = customer,
+            StatusFilter = status,
+            OrderTypeFilter = orderType,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            FilterDescription = filters.Any() ? string.Join(" | ", filters) : "All Orders"
+        };
+
+        return View(model);
+    }
+
     // ───────── ONLINE ORDERS FULFILLMENT REPORT ─────────
     public async Task<IActionResult> OnlineOrders()
     {
