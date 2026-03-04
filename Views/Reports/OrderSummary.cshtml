@@ -357,7 +357,7 @@
                         };
                         var isPaid = order.PaidAmount.HasValue && order.TotalPrice.HasValue && order.PaidAmount >= order.TotalPrice && order.TotalPrice > 0;
                         <tr>
-                            <td>@order.OrderedAt.ToPacific().ToString("MM/dd/yy")</td>
+                            <td>@order.OrderedAt.ToString("MM/dd/yy")</td>
                             <td>@(order.DeliveryDate?.ToString("MM/dd") ?? "—")</td>
                             <td>@(order.Customer?.Name ?? "—")</td>
                             <td style="font-size:10px">@order.OrderType</td>

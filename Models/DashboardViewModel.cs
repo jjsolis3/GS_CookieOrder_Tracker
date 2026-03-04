@@ -6,7 +6,7 @@ public class DashboardViewModel
     public int TotalBoxesOnHand { get; set; }
     public int TotalBoxesReceived { get; set; }
     public int TotalBoxesSold { get; set; }
-    public int ActiveProducts { get; set; }
+    public int BoothBoxesSold { get; set; }
 
     // Orders
     public int TotalOrders { get; set; }

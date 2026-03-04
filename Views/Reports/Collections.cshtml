@@ -253,7 +253,7 @@
                                 var products = string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
                                 var balance = (order.TotalPrice ?? 0) - (order.PaidAmount ?? 0);
                                 <tr>
-                                    <td>@order.OrderedAt.ToPacific().ToString("MM/dd/yyyy")</td>
+                                    <td>@order.OrderedAt.ToString("MM/dd/yyyy")</td>
                                     <td style="max-width:250px;white-space:normal">@products</td>
                                     <td class="text-right">@order.TotalPrice?.ToString("C")</td>
                                     <td class="text-right text-success">@((order.PaidAmount ?? 0).ToString("C"))</td>

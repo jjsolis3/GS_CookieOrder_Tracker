@@ -111,7 +111,7 @@ public class PaybacksController : Controller
                 Notes = p.Notes,
                 OrderId = p.OrderId,
                 OrderInfo = p.Order != null
-                    ? p.Order.OrderedAt.ToPacific().ToString("yyyy-MM-dd") + " - " + (p.Order.Customer != null ? p.Order.Customer.Name : "")
+                    ? p.Order.OrderedAt.ToString("yyyy-MM-dd") + " - " + (p.Order.Customer != null ? p.Order.Customer.Name : "")
                     : p.Product != null
                         ? p.Product.Name + " x" + (p.QuantityBoxes ?? 0)
                         : ""

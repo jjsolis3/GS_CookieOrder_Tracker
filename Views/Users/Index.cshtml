@@ -58,7 +58,7 @@
                                             }
                                         </select>
                                     </td>
-                                    <td>@user.CreatedAt.ToPacific().ToString("yyyy-MM-dd")</td>
+                                    <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
                                     <td>@(user.LastSignIn?.ToPacific().ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-warning reset-btn" data-email="@user.Email">

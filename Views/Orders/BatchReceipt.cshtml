@@ -245,7 +245,7 @@
                         </div>
                         <div class="order-meta-row">
                             <span class="order-meta-label">Order Date</span>
-                            <span>@order.OrderedAt.ToPacific().ToString("M/d/yyyy")</span>
+                            <span>@order.OrderedAt.ToString("M/d/yyyy")</span>
                         </div>
                         @if (order.DeliveryDate.HasValue)
                         {

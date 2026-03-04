@@ -149,8 +149,24 @@
                 }
                 else
                 {
+                    @{
+                        string SortUrl(string col) {
+                            var dir = (Model.SortBy == col && Model.SortDir != "desc") ? "desc" : "asc";
+                            return Url.Action("Index", new {
+                                search = Model.SearchTerm, orderType = Model.OrderTypeFilter,
+                                status = Model.StatusFilter,
+                                dateFrom = Model.DateFrom?.ToString("yyyy-MM-dd"),
+                                dateTo = Model.DateTo?.ToString("yyyy-MM-dd"),
+                                sortBy = col, sortDir = dir, page = 1, pageSize = Model.PageSize
+                            })!;
+                        }
+                        string SortIcon(string col) {
+                            if (Model.SortBy != col) return "fa fa-sort ms-1 text-muted";
+                            return Model.SortDir == "desc" ? "fa fa-sort-down ms-1 text-primary" : "fa fa-sort-up ms-1 text-primary";
+                        }
+                    }
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm table-sortable" style="table-layout:fixed;width:100%">
+                        <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
                             <colgroup>
                                 <col style="width:35px">  <!-- Checkbox -->
                                 <col style="width:90px">  <!-- Date -->
@@ -166,14 +182,14 @@
                             <thead>
                                 <tr>
                                     <th><input type="checkbox" id="selectAllOrders" class="form-check-input" title="Select All" /></th>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Customer</th>
-                                    <th>Girl Scout</th>
-                                    <th>Status</th>
+                                    <th><a href="@SortUrl("date")" class="text-decoration-none text-dark">Date <i class="@SortIcon("date")" style="font-size:.7rem"></i></a></th>
+                                    <th><a href="@SortUrl("type")" class="text-decoration-none text-dark">Type <i class="@SortIcon("type")" style="font-size:.7rem"></i></a></th>
+                                    <th><a href="@SortUrl("customer")" class="text-decoration-none text-dark">Customer <i class="@SortIcon("customer")" style="font-size:.7rem"></i></a></th>
+                                    <th><a href="@SortUrl("scout")" class="text-decoration-none text-dark">Scout <i class="@SortIcon("scout")" style="font-size:.7rem"></i></a></th>
+                                    <th><a href="@SortUrl("status")" class="text-decoration-none text-dark">Status <i class="@SortIcon("status")" style="font-size:.7rem"></i></a></th>
                                     <th>Paid</th>
-                                    <th>Qty</th>
-                                    <th>Total</th>
+                                    <th><a href="@SortUrl("qty")" class="text-decoration-none text-dark">Qty <i class="@SortIcon("qty")" style="font-size:.7rem"></i></a></th>
+                                    <th><a href="@SortUrl("total")" class="text-decoration-none text-dark">Total <i class="@SortIcon("total")" style="font-size:.7rem"></i></a></th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -195,7 +211,7 @@
                                                 <input type="checkbox" class="form-check-input order-select-cb" data-order-id="@order.Id" />
                                             }
                                         </td>
-                                        <td class="text-nowrap">@order.OrderedAt.ToPacific().ToString("yyyy-MM-dd")</td>
+                                        <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
                                         <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
                                         <td style="white-space:normal;word-break:break-word">@(order.Customer?.Name ?? "-")</td>
                                         <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>
@@ -262,6 +278,8 @@
                                         { "status", Model.StatusFilter },
                                         { "dateFrom", Model.DateFrom?.ToString("yyyy-MM-dd") },
                                         { "dateTo", Model.DateTo?.ToString("yyyy-MM-dd") },
+                                        { "sortBy", Model.SortBy },
+                                        { "sortDir", Model.SortDir },
                                         { "pageSize", Model.PageSize.ToString() }
                                     };
                                 }

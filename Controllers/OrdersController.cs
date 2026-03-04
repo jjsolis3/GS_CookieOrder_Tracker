@@ -26,6 +26,8 @@ public class OrdersController : Controller
         string? status,
         DateTime? dateFrom,
         DateTime? dateTo,
+        string? sortBy,
+        string? sortDir,
         int page = 1,
         int pageSize = 25)
     {
@@ -76,8 +78,21 @@ public class OrdersController : Controller
         if (page < 1) page = 1;
         if (page > totalPages && totalPages > 0) page = totalPages;
 
-        var orders = await query
-            .OrderByDescending(o => o.OrderedAt)
+        // Apply sorting
+        var isDesc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<Order> sorted = sortBy?.ToLower() switch
+        {
+            "date" => isDesc ? query.OrderByDescending(o => o.OrderedAt) : query.OrderBy(o => o.OrderedAt),
+            "type" => isDesc ? query.OrderByDescending(o => o.OrderType) : query.OrderBy(o => o.OrderType),
+            "customer" => isDesc ? query.OrderByDescending(o => o.Customer != null ? o.Customer.Name : "") : query.OrderBy(o => o.Customer != null ? o.Customer.Name : ""),
+            "scout" => isDesc ? query.OrderByDescending(o => o.GirlScout != null ? o.GirlScout.FirstName : "") : query.OrderBy(o => o.GirlScout != null ? o.GirlScout.FirstName : ""),
+            "status" => isDesc ? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
+            "qty" => isDesc ? query.OrderByDescending(o => o.TotalQty) : query.OrderBy(o => o.TotalQty),
+            "total" => isDesc ? query.OrderByDescending(o => o.TotalPrice) : query.OrderBy(o => o.TotalPrice),
+            _ => query.OrderByDescending(o => o.OrderedAt) // default: newest first
+        };
+
+        var orders = await sorted
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -93,6 +108,8 @@ public class OrdersController : Controller
             PageSize = pageSize,
             TotalPages = totalPages,
             TotalFilteredCount = totalFiltered,
+            SortBy = sortBy,
+            SortDir = sortDir,
             SearchTerm = search,
             OrderTypeFilter = orderType,
             StatusFilter = status,
@@ -250,7 +267,7 @@ public class OrdersController : Controller
             orderType = order.OrderType,
             status = order.Status,
             paymentMethod = order.PaymentMethod,
-            orderedAt = order.OrderedAt.ToPacific().ToString("yyyy-MM-dd"),
+            orderedAt = order.OrderedAt.ToString("yyyy-MM-dd"),
             deliveryDate = order.DeliveryDate?.ToString("yyyy-MM-dd"),
             notes = order.Notes,
             customerName = order.Customer?.Name,
