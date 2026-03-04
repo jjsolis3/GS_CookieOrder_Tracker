@@ -24,4 +24,5 @@ public class ProductStockRow
     public int BoxesSoldOnline { get; set; }
     public int BoxesReturned { get; set; }
     public int BoxesOnHand => BoxesReceived - BoxesSoldPersonal - BoxesReturned;
+    public int SortOrder { get; set; }
 }

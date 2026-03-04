@@ -27,14 +27,15 @@ public class PaybacksController : Controller
             .Include(li => li.Order)
             .Include(li => li.Product)
             .Where(li => li.Order!.OrderType != "Online Delivery")
-            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox, li.Product.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(li => li.QuantityBoxes)
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(r => r.ProductName)
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.ProductName)
             .ToListAsync();
 
         var owedFromSales = owedByProduct.Sum(r => r.AmountOwed);
@@ -50,12 +51,13 @@ public class PaybacksController : Controller
             .Include(li => li.Order)
             .Include(li => li.Product)
             .Where(li => li.OrderId != null && paidOrderIds.Contains(li.OrderId))
-            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox, li.Product.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(li => li.QuantityBoxes)
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                SortOrder = g.Key.SortOrder
             })
             .ToListAsync();
 
@@ -63,26 +65,28 @@ public class PaybacksController : Controller
         var paidByProductDirect = await _dbContext.Paybacks
             .Include(p => p.Product)
             .Where(p => p.ProductId != null && p.Product != null && p.QuantityBoxes != null)
-            .GroupBy(p => new { p.Product!.Name, p.Product.PricePerBox })
+            .GroupBy(p => new { p.Product!.Name, p.Product.PricePerBox, p.Product.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(p => p.QuantityBoxes ?? 0)
+                BoxesSold = g.Sum(p => p.QuantityBoxes ?? 0),
+                SortOrder = g.Key.SortOrder
             })
             .ToListAsync();
 
         // Merge both sources
         var paidByProduct = paidByProductFromOrders
             .Concat(paidByProductDirect)
-            .GroupBy(r => new { r.ProductName, r.PricePerBox })
+            .GroupBy(r => new { r.ProductName, r.PricePerBox, r.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.ProductName,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(r => r.BoxesSold)
+                BoxesSold = g.Sum(r => r.BoxesSold),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(r => r.ProductName)
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.ProductName)
             .ToList();
 
         // Subtract the value of returned product (returns remove payback responsibility)

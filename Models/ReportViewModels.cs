@@ -19,6 +19,7 @@ public class ProductSummaryItem
     public string ProductName { get; set; } = "";
     public int TotalBoxes { get; set; }
     public decimal TotalValue { get; set; }
+    public int SortOrder { get; set; }
 }
 
 // ═══════════ ONLINE ORDERS REPORT ═══════════
@@ -84,6 +85,7 @@ public class PaybackProductBreakdown
     public decimal PricePerBox { get; set; }
     public int BoxesSold { get; set; }
     public decimal AmountOwed { get; set; }
+    public int SortOrder { get; set; }
 }
 
 public class PaybackScoutSummary
@@ -147,6 +149,7 @@ public class ProductStockLevel
     public int TotalReceived { get; set; }
     public int TotalSold { get; set; }
     public int TotalReturned { get; set; }
+    public int SortOrder { get; set; }
 }
 
 // ═══════════ ORDER SUMMARY REPORT (custom search/filter) ═══════════
@@ -220,6 +223,7 @@ public class BoothProductSummary
     public string ProductName { get; set; } = "";
     public int BoxesSold { get; set; }
     public decimal Revenue { get; set; }
+    public int SortOrder { get; set; }
 }
 
 public class BoothInventorySummary

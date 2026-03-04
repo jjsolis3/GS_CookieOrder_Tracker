@@ -143,28 +143,28 @@
                 </div>
             </div>
             <div class="card-body">
+                @{
+                    string SortUrl(string col) {
+                        var dir = (Model.SortBy == col && Model.SortDir != "desc") ? "desc" : "asc";
+                        return Url.Action("Index", new {
+                            search = Model.SearchTerm, orderType = Model.OrderTypeFilter,
+                            status = Model.StatusFilter,
+                            dateFrom = Model.DateFrom?.ToString("yyyy-MM-dd"),
+                            dateTo = Model.DateTo?.ToString("yyyy-MM-dd"),
+                            sortBy = col, sortDir = dir, page = 1, pageSize = Model.PageSize
+                        })!;
+                    }
+                    string SortIcon(string col) {
+                        if (Model.SortBy != col) return "fa fa-sort ms-1 text-muted";
+                        return Model.SortDir == "desc" ? "fa fa-sort-down ms-1 text-primary" : "fa fa-sort-up ms-1 text-primary";
+                    }
+                }
                 @if (!Model.Orders.Any())
                 {
                     <p class="text-muted text-center py-4">No orders found matching your criteria.</p>
                 }
                 else
                 {
-                    @{
-                        string SortUrl(string col) {
-                            var dir = (Model.SortBy == col && Model.SortDir != "desc") ? "desc" : "asc";
-                            return Url.Action("Index", new {
-                                search = Model.SearchTerm, orderType = Model.OrderTypeFilter,
-                                status = Model.StatusFilter,
-                                dateFrom = Model.DateFrom?.ToString("yyyy-MM-dd"),
-                                dateTo = Model.DateTo?.ToString("yyyy-MM-dd"),
-                                sortBy = col, sortDir = dir, page = 1, pageSize = Model.PageSize
-                            })!;
-                        }
-                        string SortIcon(string col) {
-                            if (Model.SortBy != col) return "fa fa-sort ms-1 text-muted";
-                            return Model.SortDir == "desc" ? "fa fa-sort-down ms-1 text-primary" : "fa fa-sort-up ms-1 text-primary";
-                        }
-                    }
                     <div class="table-responsive">
                         <table class="table table-hover table-sm" style="table-layout:fixed;width:100%">
                             <colgroup>

@@ -36,18 +36,19 @@ public class ReportsController : Controller
             .ThenBy(o => o.OrderedAt)
             .ToListAsync();
 
-        // Aggregate products needed
+        // Aggregate products needed (sorted by product sort_order)
         var productSummary = orders
             .SelectMany(o => o.LineItems)
-            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .GroupBy(li => new { li.ProductId, li.Product?.Name, SortOrder = li.Product?.SortOrder ?? 0 })
             .Select(g => new ProductSummaryItem
             {
                 ProductId = g.Key.ProductId,
                 ProductName = g.Key.Name ?? "Unknown",
                 TotalBoxes = g.Sum(li => li.QuantityBoxes),
-                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(p => p.ProductName)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
             .ToList();
 
         var model = new PendingOrdersReportViewModel
@@ -106,15 +107,16 @@ public class ReportsController : Controller
 
         var productSummary = orders
             .SelectMany(o => o.LineItems)
-            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .GroupBy(li => new { li.ProductId, li.Product?.Name, SortOrder = li.Product?.SortOrder ?? 0 })
             .Select(g => new ProductSummaryItem
             {
                 ProductId = g.Key.ProductId,
                 ProductName = g.Key.Name ?? "Unknown",
                 TotalBoxes = g.Sum(li => li.QuantityBoxes),
-                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(p => p.ProductName)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
             .ToList();
 
         // Build human-readable filter description
@@ -235,21 +237,22 @@ public class ReportsController : Controller
 
             // Product summary (from booth_sales rows)
             vm.ProductSummary = boothSales
-                .GroupBy(bs => bs.Product?.Name ?? "Unknown")
+                .GroupBy(bs => new { Name = bs.Product?.Name ?? "Unknown", SortOrder = bs.Product?.SortOrder ?? 0 })
                 .Select(g => new BoothProductSummary
                 {
-                    ProductName = g.Key,
+                    ProductName = g.Key.Name,
                     BoxesSold = g.Sum(bs => bs.QuantityBoxes),
-                    Revenue = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
+                    Revenue = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+                    SortOrder = g.Key.SortOrder
                 })
-                .OrderBy(p => p.ProductName)
+                .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
                 .ToList();
 
             // Booth inventory (starting vs sold vs remaining)
             vm.InventorySummary = await _dbContext.BoothInventories
                 .Include(bi => bi.Product)
                 .Where(bi => bi.BoothSessionId == sessionId.Value)
-                .OrderBy(bi => bi.Product!.Name)
+                .OrderBy(bi => bi.Product!.SortOrder).ThenBy(bi => bi.Product!.Name)
                 .Select(bi => new BoothInventorySummary
                 {
                     ProductName = bi.Product!.Name,
@@ -303,18 +306,19 @@ public class ReportsController : Controller
             .ThenBy(o => o.OrderedAt)
             .ToListAsync();
 
-        // Aggregate products needed
+        // Aggregate products needed (sorted by product sort_order)
         var productSummary = orders
             .SelectMany(o => o.LineItems)
-            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .GroupBy(li => new { li.ProductId, li.Product?.Name, SortOrder = li.Product?.SortOrder ?? 0 })
             .Select(g => new ProductSummaryItem
             {
                 ProductId = g.Key.ProductId,
                 ProductName = g.Key.Name ?? "Unknown",
                 TotalBoxes = g.Sum(li => li.QuantityBoxes),
-                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(p => p.ProductName)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
             .ToList();
 
         var model = new OnlineOrdersReportViewModel
@@ -410,15 +414,16 @@ public class ReportsController : Controller
         // Aggregate by product
         var productBreakdown = orders
             .SelectMany(o => o.LineItems)
-            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox, li.Product.SortOrder })
             .Select(g => new PaybackProductBreakdown
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
                 BoxesSold = g.Sum(li => li.QuantityBoxes),
-                AmountOwed = g.Sum(li => li.QuantityBoxes * g.Key.PricePerBox)
+                AmountOwed = g.Sum(li => li.QuantityBoxes * g.Key.PricePerBox),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(p => p.ProductName)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
             .ToList();
 
         // Aggregate by Girl Scout
@@ -487,15 +492,16 @@ public class ReportsController : Controller
         // Product breakdown
         var productBreakdown = orders
             .SelectMany(o => o.LineItems)
-            .GroupBy(li => new { li.ProductId, li.Product?.Name })
+            .GroupBy(li => new { li.ProductId, li.Product?.Name, SortOrder = li.Product?.SortOrder ?? 0 })
             .Select(g => new ProductSummaryItem
             {
                 ProductId = g.Key.ProductId,
                 ProductName = g.Key.Name ?? "Unknown",
                 TotalBoxes = g.Sum(li => li.QuantityBoxes),
-                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
+                TotalValue = g.Sum(li => li.QuantityBoxes * li.UnitPrice),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderByDescending(p => p.TotalBoxes)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName)
             .ToList();
 
         // Time-based breakdown
@@ -586,8 +592,8 @@ public class ReportsController : Controller
         // Get all received boxes
         var receivedByProduct = await _dbContext.InventoryReceipts
             .Include(r => r.Product)
-            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase })
-            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
+            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase, r.Product.SortOrder })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, g.Key.SortOrder, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
             .ToListAsync();
 
         // Calculate current stock levels
@@ -604,9 +610,10 @@ public class ReportsController : Controller
                 CurrentStock = r.Boxes - sold - returned,
                 TotalReceived = receivedInPeriod,
                 TotalSold = sold,
-                TotalReturned = returned
+                TotalReturned = returned,
+                SortOrder = r.SortOrder
             };
-        }).OrderBy(s => s.ProductName).ToList();
+        }).OrderBy(s => s.SortOrder).ThenBy(s => s.ProductName).ToList();
 
         var model = new InventoryReportViewModel
         {

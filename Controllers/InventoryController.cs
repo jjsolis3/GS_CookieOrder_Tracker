@@ -138,8 +138,8 @@ public class InventoryController : Controller
     {
         var received = await _dbContext.InventoryReceipts
             .Include(r => r.Product)
-            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase })
-            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
+            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase, r.Product.SortOrder })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, g.Key.SortOrder, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
             .ToListAsync();
 
         var soldPersonal = await _dbContext.OrderLineItems
@@ -181,9 +181,10 @@ public class InventoryController : Controller
                 BoxesSoldPersonal = sp?.Boxes ?? 0,
                 BoxesSoldTroop = st?.Boxes ?? 0,
                 BoxesSoldOnline = so?.Boxes ?? 0,
-                BoxesReturned = rt?.Boxes ?? 0
+                BoxesReturned = rt?.Boxes ?? 0,
+                SortOrder = r.SortOrder
             };
-        }).OrderBy(p => p.ProductName).ToList();
+        }).OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName).ToList();
 
         // Load inventory batches for the combined view
         var batches = await _dbContext.InventoryBatches
