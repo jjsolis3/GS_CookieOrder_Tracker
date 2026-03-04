@@ -1,5 +1,6 @@
 using System.Text;
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Helpers;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -463,7 +464,7 @@ public class BoothingController : Controller
             sale = new
             {
                 id = saleGroupId,
-                time = DateTime.UtcNow.ToString("h:mm tt"),
+                time = DateTime.UtcNow.ToPacific().ToString("h:mm tt"),
                 products = string.Join(", ", lineItemDetails.Select(li =>
                 {
                     var d = (dynamic)li;

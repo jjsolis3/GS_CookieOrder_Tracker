@@ -195,7 +195,7 @@
                                                 <input type="checkbox" class="form-check-input order-select-cb" data-order-id="@order.Id" />
                                             }
                                         </td>
-                                        <td class="text-nowrap">@order.OrderedAt.ToString("yyyy-MM-dd")</td>
+                                        <td class="text-nowrap">@order.OrderedAt.ToPacific().ToString("yyyy-MM-dd")</td>
                                         <td><span class="badge light @typeClass" style="font-size:.7rem">@order.OrderType</span></td>
                                         <td style="white-space:normal;word-break:break-word">@(order.Customer?.Name ?? "-")</td>
                                         <td style="white-space:normal;word-break:break-word">@(order.GirlScout == null ? "—" : $"{order.GirlScout.FirstName} {order.GirlScout.LastName}")</td>

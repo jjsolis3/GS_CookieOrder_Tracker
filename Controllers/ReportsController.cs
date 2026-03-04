@@ -57,7 +57,7 @@ public class ReportsController : Controller
             TotalOrders = orders.Count,
             TotalBoxes = productSummary.Sum(p => p.TotalBoxes),
             TotalValue = productSummary.Sum(p => p.TotalValue),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View(model);
@@ -132,7 +132,7 @@ public class ReportsController : Controller
             TotalOrders = orders.Count,
             TotalBoxes = productSummary.Sum(p => p.TotalBoxes),
             TotalValue = productSummary.Sum(p => p.TotalValue),
-            GeneratedAt = DateTime.Now,
+            GeneratedAt = DateTime.UtcNow,
             CustomerSearch = customer,
             StatusFilter = status,
             OrderTypeFilter = orderType,
@@ -163,7 +163,7 @@ public class ReportsController : Controller
         {
             AvailableSessions = sessionOptions,
             SelectedSessionId = sessionId,
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         // If a session is selected, load its data
@@ -324,7 +324,7 @@ public class ReportsController : Controller
             TotalOrders = orders.Count,
             TotalBoxes = productSummary.Sum(p => p.TotalBoxes),
             TotalValue = productSummary.Sum(p => p.TotalValue),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View(model);
@@ -374,7 +374,7 @@ public class ReportsController : Controller
             TotalOrdered = customerSummaries.Sum(c => c.TotalOrdered),
             TotalPaid = customerSummaries.Sum(c => c.TotalPaid),
             TotalOwed = customerSummaries.Sum(c => c.TotalOwed),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View("Collections", model);
@@ -462,7 +462,7 @@ public class ReportsController : Controller
             TotalOwedToTroop = totalOwed,
             TotalOrders = orders.Count,
             TotalBoxes = orders.Sum(o => o.TotalQty ?? 0),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View(model);
@@ -541,7 +541,7 @@ public class ReportsController : Controller
             TotalBoxes = orders.Sum(o => o.TotalQty ?? 0),
             TotalRevenue = orders.Sum(o => o.TotalPrice ?? 0),
             TotalCollected = orders.Sum(o => o.PaidAmount ?? 0),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View(model);
@@ -617,7 +617,7 @@ public class ReportsController : Controller
             TotalReceived = receiptsInPeriod.Sum(r => r.QuantityBoxes + r.QuantityCases * (r.Product?.BoxesPerCase ?? 12)),
             TotalSold = soldByProduct.Sum(s => s.Boxes),
             TotalReturned = returnedByProduct.Sum(r => r.Boxes),
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
 
         return View(model);

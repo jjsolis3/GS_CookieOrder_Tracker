@@ -353,7 +353,7 @@
                         {
                             <tr>
                                 <td>@counter</td>
-                                <td class="text-nowrap"><small>@sale.CreatedAt.ToString("h:mm tt")</small></td>
+                                <td class="text-nowrap"><small>@sale.CreatedAt.ToPacific().ToString("h:mm tt")</small></td>
                                 <td style="white-space:normal;word-break:break-word">
                                     <small>@string.Join(", ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"))</small>
                                 </td>

@@ -1,4 +1,5 @@
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Helpers;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -249,7 +250,7 @@ public class OrdersController : Controller
             orderType = order.OrderType,
             status = order.Status,
             paymentMethod = order.PaymentMethod,
-            orderedAt = order.OrderedAt.ToString("yyyy-MM-dd"),
+            orderedAt = order.OrderedAt.ToPacific().ToString("yyyy-MM-dd"),
             deliveryDate = order.DeliveryDate?.ToString("yyyy-MM-dd"),
             notes = order.Notes,
             customerName = order.Customer?.Name,

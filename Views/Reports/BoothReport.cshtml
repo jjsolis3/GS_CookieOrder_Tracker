@@ -297,10 +297,10 @@
             <div class="header">
                 <h1>Booth Session Report</h1>
                 <div class="location">@Model.Location</div>
-                <div class="subtitle">Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</div>
+                <div class="subtitle">Generated on @Model.GeneratedAt.ToPacific().ToString("MMMM d, yyyy 'at' h:mm tt")</div>
                 <div class="session-meta">
-                    <span><strong>Date:</strong> @Model.StartedAt?.ToString("MMMM d, yyyy")</span>
-                    <span><strong>Time:</strong> @Model.StartedAt?.ToString("h:mm tt") @(Model.EndedAt.HasValue ? $"— {Model.EndedAt.Value:h:mm tt}" : "(Active)")</span>
+                    <span><strong>Date:</strong> @Model.StartedAt?.ToPacific().ToString("MMMM d, yyyy")</span>
+                    <span><strong>Time:</strong> @Model.StartedAt?.ToPacific().ToString("h:mm tt") @(Model.EndedAt.HasValue ? $"— {Model.EndedAt.Value.ToPacific():h:mm tt}" : "(Active)")</span>
                     <span><strong>Duration:</strong> @Model.Duration</span>
                     <span><strong>Scouts:</strong> @Model.ScoutCount</span>
                 </div>
@@ -511,7 +511,7 @@
                         var products = string.Join(", ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"));
                         <tr>
                             <td>@saleNum</td>
-                            <td>@sale.CreatedAt.ToString("h:mm tt")</td>
+                            <td>@sale.CreatedAt.ToPacific().ToString("h:mm tt")</td>
                             <td>@(sale.ScoutName ?? "—")</td>
                             <td style="max-width:200px;white-space:normal;font-size:10px">@products</td>
                             <td>@sale.PaymentMethod</td>

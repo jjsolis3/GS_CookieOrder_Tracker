@@ -99,7 +99,7 @@
                                 ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
                                 : $"{(int)duration.TotalMinutes}m";
                             <tr>
-                                <td class="text-nowrap">@s.StartedAt.ToString("MMM d, yyyy")</td>
+                                <td class="text-nowrap">@s.StartedAt.ToPacific().ToString("MMM d, yyyy")</td>
                                 <td>@s.Location</td>
                                 <td class="text-center">@s.ScoutCount</td>
                                 <td>@durationText</td>

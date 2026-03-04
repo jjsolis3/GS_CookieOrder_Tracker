@@ -224,7 +224,7 @@
                                     _ => "badge-secondary"
                                 };
                                 <tr>
-                                    <td>@order.OrderedAt.ToString("MM/dd")</td>
+                                    <td>@order.OrderedAt.ToPacific().ToString("MM/dd")</td>
                                     <td>@order.CustomerName</td>
                                     <td><span class="badge light @typeBadge">@order.OrderType</span></td>
                                     <td class="text-end">@order.TotalQty</td>

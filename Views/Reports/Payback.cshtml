@@ -190,7 +190,7 @@
             <h1>Troop Payback Report</h1>
             <div class="subtitle">
                 @Model.DateFrom.ToString("MMM d, yyyy") - @Model.DateTo.ToString("MMM d, yyyy") |
-                Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")
+                Generated on @Model.GeneratedAt.ToPacific().ToString("MMMM d, yyyy 'at' h:mm tt")
             </div>
         </div>
 

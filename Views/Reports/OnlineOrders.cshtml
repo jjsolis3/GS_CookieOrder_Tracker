@@ -143,7 +143,7 @@
     <div class="report">
         <div class="header">
             <h1>Online Orders Fulfillment Report</h1>
-            <div class="subtitle">Generated on @Model.GeneratedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</div>
+            <div class="subtitle">Generated on @Model.GeneratedAt.ToPacific().ToString("MMMM d, yyyy 'at' h:mm tt")</div>
         </div>
 
         <div class="summary-cards">
@@ -213,7 +213,7 @@
                     {
                         var products = string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
                         <tr>
-                            <td>@order.OrderedAt.ToString("MM/dd")</td>
+                            <td>@order.OrderedAt.ToPacific().ToString("MM/dd")</td>
                             <td>@(order.DeliveryDate?.ToString("MM/dd") ?? "—")</td>
                             <td>@(order.Customer?.Name ?? "—")</td>
                             <td>@(order.GirlScout != null ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}" : "—")</td>
