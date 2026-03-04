@@ -7,6 +7,10 @@
     <UserSecretsId>c592b25e-0ddd-48a0-8f50-42a05823f5c2</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Using Include="GS_CookieOrder_Tracker.Helpers" />
+  </ItemGroup>
+
   <!-- Exclude the Ref folder from compilation; it is a read-only theme reference -->
   <ItemGroup>
     <Compile Remove="Ref\**" />
