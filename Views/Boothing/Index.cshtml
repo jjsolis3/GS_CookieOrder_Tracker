@@ -37,8 +37,21 @@
                         <input id="sessionNotes" class="form-control" placeholder="e.g. Troop 774 - Saturday shift" />
                     </div>
 
-                    <!-- Starting Inventory (Troop-provided) -->
+                    <!-- Personal Inventory Toggle -->
                     <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="usePersonalInventory" />
+                            <label class="form-check-label fw-bold" for="usePersonalInventory">
+                                <i class="fa fa-user me-1"></i> Use Scout's Personal Inventory
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0 mt-1" id="inventorySourceHint">
+                            <strong>OFF:</strong> Inventory is provided by the troop. Sales won't affect the scout's personal stock.
+                        </p>
+                    </div>
+
+                    <!-- Starting Inventory (Troop-provided, hidden when personal inventory is ON) -->
+                    <div class="mb-3" id="troopInventorySection">
                         <label class="form-label fw-bold">
                             <i class="fa fa-boxes me-1"></i> Starting Inventory (Troop-Provided)
                         </label>
@@ -91,6 +104,18 @@
                     <span class="badge badge-primary" style="font-size:0.9rem">
                         <i class="fa fa-map-marker-alt me-1"></i> @Model.ActiveSession!.Location
                     </span>
+                    @if (Model.ActiveSession.UsePersonalInventory)
+                    {
+                        <span class="badge bg-warning text-dark" style="font-size:0.8rem">
+                            <i class="fa fa-user me-1"></i> Personal Inventory
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-info text-dark" style="font-size:0.8rem">
+                            <i class="fa fa-boxes me-1"></i> Troop Inventory
+                        </span>
+                    }
                     <span class="text-muted">
                         <i class="fa fa-users me-1"></i> @Model.ActiveSession.ScoutCount Scout@(Model.ActiveSession.ScoutCount != 1 ? "s" : "")
                     </span>
@@ -123,7 +148,7 @@
 
     <!-- ═══════════ KPI CARDS ═══════════ -->
     <div class="row">
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
                     <h4 class="text-primary mb-0" id="kpiSaleCount">@Model.Sales.Count</h4>
@@ -131,7 +156,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
                     <h4 class="text-success mb-0" id="kpiBoxCount">@Model.TotalSales</h4>
@@ -139,11 +164,40 @@
                 </div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
                     <h4 class="text-info mb-0" id="kpiRevenue">@Model.TotalRevenue.ToString("C")</h4>
                     <small class="text-muted">Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="card">
+                <div class="card-body text-center py-2">
+                    <h4 class="text-warning mb-0" id="kpiDonations">@Model.TotalDonations.ToString("C")</h4>
+                    <small class="text-muted">Donations</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ DONATION QUICK-ADD ═══════════ -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa fa-heart text-danger"></i>
+                    <span class="fw-bold">Add Donation</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width:140px">
+                        <span class="input-group-text">$</span>
+                        <input type="number" id="donationAmount" class="form-control" min="0.01" step="0.01" placeholder="0.00" />
+                    </div>
+                    <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
+                        <i class="fa fa-plus me-1"></i> Add
+                    </button>
                 </div>
             </div>
         </div>
@@ -155,7 +209,7 @@
         <div class="card mb-3" id="boothInventoryPanel">
             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
-                    <i class="fa fa-boxes me-1"></i> Booth Inventory (Troop Stock)
+                    <i class="fa fa-boxes me-1"></i> Booth Inventory (@(Model.ActiveSession!.UsePersonalInventory ? "Personal Stock" : "Troop Stock"))
                 </h6>
                 <button type="button" class="btn btn-xs btn-outline-secondary" id="toggleInventoryBtn">
                     <i class="fa fa-chevron-up" id="inventoryToggleIcon"></i>
@@ -422,6 +476,57 @@
 
             console.log('[BoothSales] Session ID:', sessionId || '(none)');
 
+            // ══════════ PERSONAL INVENTORY TOGGLE ══════════
+            var personalToggle = getEl('usePersonalInventory');
+            var troopInventorySection = getEl('troopInventorySection');
+            var inventoryHint = getEl('inventorySourceHint');
+            if (personalToggle) {
+                personalToggle.onchange = function() {
+                    if (personalToggle.checked) {
+                        if (troopInventorySection) troopInventorySection.style.display = 'none';
+                        if (inventoryHint) inventoryHint.innerHTML = '<strong>ON:</strong> Inventory comes from the scout\'s personal stock. Sales will deduct from her inventory.';
+                    } else {
+                        if (troopInventorySection) troopInventorySection.style.display = '';
+                        if (inventoryHint) inventoryHint.innerHTML = '<strong>OFF:</strong> Inventory is provided by the troop. Sales won\'t affect the scout\'s personal stock.';
+                    }
+                };
+            }
+
+            // ══════════ DONATION ══════════
+            var donationBtn = getEl('addDonationBtn');
+            if (donationBtn && sessionId) {
+                donationBtn.onclick = function() {
+                    var amountEl = getEl('donationAmount');
+                    var amount = parseFloat(amountEl ? amountEl.value : 0);
+                    if (!amount || amount <= 0) { alert('Please enter a donation amount.'); return; }
+
+                    donationBtn.disabled = true;
+                    fetch('@Url.Action("AddDonation", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({ sessionId: sessionId, amount: amount })
+                    }).then(function(r) {
+                        if (r.ok) {
+                            return r.json().then(function(d) {
+                                var donEl = getEl('kpiDonations');
+                                if (donEl) {
+                                    donEl.textContent = '$' + d.totalDonations.toFixed(2);
+                                    flashKpi(donEl);
+                                }
+                                if (amountEl) amountEl.value = '';
+                                donationBtn.disabled = false;
+                            });
+                        } else {
+                            donationBtn.disabled = false;
+                            r.json().then(function(d) { alert(d.error || 'Failed to add donation.'); });
+                        }
+                    }).catch(function() {
+                        donationBtn.disabled = false;
+                        alert('Network error. Please try again.');
+                    });
+                };
+            }
+
             // ══════════ SESSION TIMER ══════════
             var timerEl = getEl('sessionTimer');
             if (timerEl && timerEl.dataset.start) {
@@ -458,6 +563,8 @@
                         }
                     });
 
+                    var usePersonal = personalToggle ? personalToggle.checked : false;
+
                     fetch('@Url.Action("StartSession", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
@@ -465,7 +572,8 @@
                             location: loc,
                             scoutCount: scoutCountEl ? (parseInt(scoutCountEl.value) || 1) : 1,
                             notes: notesEl ? (notesEl.value || null) : null,
-                            inventory: inventory
+                            usePersonalInventory: usePersonal,
+                            inventory: usePersonal ? [] : inventory
                         })
                     }).then(function(r) {
                         if (r.ok) location.reload();

@@ -148,13 +148,16 @@ public class BoothingController : Controller
             },
             Scouts = scouts,
             RecentLocations = uniqueLocations,
+            TotalDonations = activeSession?.TotalDonations ?? 0,
             ActiveSession = activeSession != null ? new BoothSessionInfo
             {
                 Id = activeSession.Id,
                 Location = activeSession.Location,
                 StartedAt = activeSession.StartedAt,
                 ScoutCount = activeSession.ScoutCount,
-                Notes = activeSession.Notes
+                Notes = activeSession.Notes,
+                UsePersonalInventory = activeSession.UsePersonalInventory,
+                TotalDonations = activeSession.TotalDonations
             } : null,
             // Include booth inventory if there's an active session
             BoothInventoryItems = activeSession != null
@@ -201,6 +204,8 @@ public class BoothingController : Controller
             StartedAt = DateTime.UtcNow,
             ScoutCount = req.ScoutCount > 0 ? req.ScoutCount : 1,
             Notes = req.Notes?.Trim(),
+            UsePersonalInventory = req.UsePersonalInventory,
+            TotalDonations = 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -251,6 +256,27 @@ public class BoothingController : Controller
         return Ok(new { success = true });
     }
 
+    // ───────── ADD DONATION ─────────
+    [HttpPost]
+    public async Task<IActionResult> AddDonation([FromBody] AddDonationRequest req)
+    {
+        if (req.Amount <= 0)
+            return BadRequest(new { error = "Donation amount must be greater than zero." });
+
+        var session = await _dbContext.BoothSessions.FindAsync(req.SessionId);
+        if (session == null) return NotFound(new { error = "Session not found." });
+
+        session.TotalDonations += req.Amount;
+        session.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            totalDonations = session.TotalDonations
+        });
+    }
+
     // ───────── QUICK ADD BOOTH SALE (writes to booth_sales table) ─────────
     [HttpPost]
     public async Task<IActionResult> QuickAdd([FromBody] QuickBoothSaleRequest req)
@@ -294,6 +320,14 @@ public class BoothingController : Controller
         var boothDate = DateOnly.FromDateTime(targetDate);
         var notes = req.Notes?.Trim();
 
+        // Check if this session uses personal inventory
+        bool usePersonalInventory = false;
+        if (req.SessionId.HasValue)
+        {
+            var sessionForFlag = await _dbContext.BoothSessions.FindAsync(req.SessionId.Value);
+            if (sessionForFlag != null) usePersonalInventory = sessionForFlag.UsePersonalInventory;
+        }
+
         // If this is a session sale, load booth inventory to update sold quantities
         Dictionary<Guid, BoothInventory>? boothInventory = null;
         if (req.SessionId.HasValue)
@@ -305,6 +339,30 @@ public class BoothingController : Controller
 
         var lineItemDetails = new List<object>();
         var inventoryWarnings = new List<string>();
+
+        // If using personal inventory, create a corresponding Order to deduct from Girl Scout inventory
+        Order? personalInventoryOrder = null;
+        if (usePersonalInventory)
+        {
+            personalInventoryOrder = new Order
+            {
+                Id = Guid.NewGuid(),
+                OrderType = "Booth Sale",
+                Status = "Completed",
+                PaymentMethod = req.PaymentMethod ?? "Cash",
+                IsOnlinePaid = false,
+                OrderedAt = targetDate,
+                Notes = $"Booth sale (personal inventory) - {location}",
+                TotalQty = totalQty,
+                TotalPrice = totalPrice,
+                PaidAmount = totalPrice,
+                BoothSessionId = req.SessionId,
+                GirlScoutId = req.GirlScoutId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.Orders.Add(personalInventoryOrder);
+        }
 
         foreach (var item in req.Items)
         {
@@ -320,7 +378,7 @@ public class BoothingController : Controller
                 ProductId = item.ProductId,
                 QuantityBoxes = item.Qty,
                 UnitPrice = products[item.ProductId].PricePerBox,
-                FromPersonalInventory = false,
+                FromPersonalInventory = usePersonalInventory,
                 GirlScoutId = req.GirlScoutId,
                 PaymentMethod = req.PaymentMethod ?? "Cash",
                 Notes = string.IsNullOrEmpty(notes) ? null : notes,
@@ -328,8 +386,24 @@ public class BoothingController : Controller
                 UpdatedAt = DateTime.UtcNow
             });
 
-            // Update booth inventory sold quantity
-            if (boothInventory != null && boothInventory.TryGetValue(item.ProductId, out var bi))
+            // If using personal inventory, also create OrderLineItems to deduct from personal stock
+            if (usePersonalInventory && personalInventoryOrder != null)
+            {
+                _dbContext.OrderLineItems.Add(new OrderLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = personalInventoryOrder.Id,
+                    ProductId = item.ProductId,
+                    QuantityBoxes = item.Qty,
+                    UnitPrice = products[item.ProductId].PricePerBox,
+                    InventorySource = "Personal",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            // Update booth inventory sold quantity (only if NOT personal inventory - troop stock tracking)
+            if (!usePersonalInventory && boothInventory != null && boothInventory.TryGetValue(item.ProductId, out var bi))
             {
                 bi.SoldQuantity += item.Qty;
                 bi.UpdatedAt = DateTime.UtcNow;
@@ -624,6 +698,9 @@ public class BoothingController : Controller
             if (session.EndedAt.HasValue)
                 sb.AppendLine($"Ended: {session.EndedAt.Value:yyyy-MM-dd HH:mm}");
             sb.AppendLine($"Scout Count: {session.ScoutCount}");
+            sb.AppendLine($"Inventory Source: {(session.UsePersonalInventory ? "Personal" : "Troop")}");
+            if (session.TotalDonations > 0)
+                sb.AppendLine($"Donations: {session.TotalDonations:C}");
             if (!string.IsNullOrWhiteSpace(session.Notes))
                 sb.AppendLine($"Notes: {session.Notes}");
             sb.AppendLine();
@@ -695,9 +772,11 @@ public class BoothingController : Controller
             EndedAt = s.EndedAt,
             ScoutCount = s.ScoutCount,
             Notes = s.Notes,
+            UsePersonalInventory = s.UsePersonalInventory,
             SaleCount = s.BoothSales.Select(bs => bs.SaleGroupId).Distinct().Count(),
             TotalBoxes = s.BoothSales.Sum(bs => bs.QuantityBoxes),
-            TotalRevenue = s.BoothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
+            TotalRevenue = s.BoothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+            TotalDonations = s.TotalDonations
         }).ToList();
 
         // Per-scout breakdown across all booth sales
@@ -748,7 +827,14 @@ public class StartSessionRequest
     public string Location { get; set; } = "";
     public int ScoutCount { get; set; } = 1;
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
     public List<BoothInventoryInput>? Inventory { get; set; }
+}
+
+public class AddDonationRequest
+{
+    public Guid SessionId { get; set; }
+    public decimal Amount { get; set; }
 }
 
 public class BoothInventoryInput

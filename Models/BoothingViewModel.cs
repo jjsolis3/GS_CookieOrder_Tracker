@@ -11,6 +11,7 @@ public class BoothingViewModel
     public int TotalSales { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalCollected { get; set; }
+    public decimal TotalDonations { get; set; }
 
     // Active booth session (null if none)
     public BoothSessionInfo? ActiveSession { get; set; }
@@ -40,6 +41,8 @@ public class BoothSessionInfo
     public DateTime StartedAt { get; set; }
     public int ScoutCount { get; set; }
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
+    public decimal TotalDonations { get; set; }
 }
 
 public class ProductCard
@@ -74,9 +77,11 @@ public class BoothSessionRow
     public DateTime? EndedAt { get; set; }
     public int ScoutCount { get; set; }
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
     public int SaleCount { get; set; }
     public int TotalBoxes { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal TotalDonations { get; set; }
 }
 
 public class ScoutContribution

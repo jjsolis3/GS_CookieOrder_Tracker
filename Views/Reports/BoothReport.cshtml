@@ -324,6 +324,13 @@
                     <div class="value">@Model.TotalRevenue.ToString("C")</div>
                     <div class="label">Total Revenue</div>
                 </div>
+                @if (Model.TotalDonations > 0)
+                {
+                    <div class="summary-card">
+                        <div class="value" style="color:#e67e22">@Model.TotalDonations.ToString("C")</div>
+                        <div class="label">Donations</div>
+                    </div>
+                }
                 @if (Model.ScoutCount > 0)
                 {
                     <div class="summary-card">
@@ -332,6 +339,10 @@
                     </div>
                 }
             </div>
+            @if (Model.UsePersonalInventory)
+            {
+                <p style="text-align:center;font-size:10px;color:#e67e22;margin-top:2px"><strong>Inventory Source: Scout's Personal Inventory</strong></p>
+            }
 
             <!-- PRODUCT SUMMARY + INVENTORY SIDE BY SIDE -->
             <div class="two-col">

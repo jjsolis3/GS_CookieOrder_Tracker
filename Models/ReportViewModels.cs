@@ -187,6 +187,8 @@ public class BoothReportViewModel
     public int TotalSales { get; set; }
     public int TotalBoxes { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal TotalDonations { get; set; }
+    public bool UsePersonalInventory { get; set; }
 
     // Product summary (boxes sold)
     public List<BoothProductSummary> ProductSummary { get; set; } = new();

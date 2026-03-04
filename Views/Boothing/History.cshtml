@@ -82,6 +82,8 @@
                             <th class="text-center">Sales</th>
                             <th class="text-center">Boxes</th>
                             <th class="text-end">Revenue</th>
+                            <th class="text-end">Donations</th>
+                            <th>Source</th>
                             <th>Status</th>
                             <th style="width:70px"></th>
                         </tr>
@@ -104,6 +106,26 @@
                                 <td class="text-center">@s.SaleCount</td>
                                 <td class="text-center"><strong>@s.TotalBoxes</strong></td>
                                 <td class="text-end text-nowrap"><strong>@s.TotalRevenue.ToString("C")</strong></td>
+                                <td class="text-end text-nowrap">
+                                    @if (s.TotalDonations > 0)
+                                    {
+                                        <span class="text-warning">@s.TotalDonations.ToString("C")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (s.UsePersonalInventory)
+                                    {
+                                        <span class="badge bg-warning text-dark" style="font-size:0.7rem">Personal</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info text-dark" style="font-size:0.7rem">Troop</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (isActive)
                                     {

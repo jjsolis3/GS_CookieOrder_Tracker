@@ -229,6 +229,8 @@ public class ReportsController : Controller
             vm.TotalSales = sales.Count;
             vm.TotalBoxes = boothSales.Sum(bs => bs.QuantityBoxes);
             vm.TotalRevenue = boothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice);
+            vm.TotalDonations = session.TotalDonations;
+            vm.UsePersonalInventory = session.UsePersonalInventory;
             vm.Sales = sales;
 
             // Product summary (from booth_sales rows)

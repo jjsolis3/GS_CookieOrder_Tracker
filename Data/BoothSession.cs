@@ -26,6 +26,12 @@ public class BoothSession
     [Column("notes")]
     public string? Notes { get; set; }
 
+    [Column("use_personal_inventory")]
+    public bool UsePersonalInventory { get; set; }
+
+    [Column("total_donations")]
+    public decimal TotalDonations { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
