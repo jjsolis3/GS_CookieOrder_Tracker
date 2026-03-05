@@ -191,10 +191,22 @@
                     <span class="fw-bold">Add Donation</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <div class="input-group input-group-sm" style="width:140px">
+                    <button type="button" class="btn btn-success btn-sm" id="addBoxDonationsBtn">
+                        <i class="fa fa-plus me-1"></i> Add 1 Box
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width:180px">
                         <span class="input-group-text">$</span>
-                        <input type="number" id="donationAmount" class="form-control" min="0.01" step="0.01" placeholder="0.00" />
+                        <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:28px;height:28px;padding:0">
+                            <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                        </button>
+                        <input type="number" id="donationAmount" class="form-control" style="font-size:0.9rem" min="1.00" step="1.00" placeholder="0.00" />
+                        <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:28px;height:28px;padding:0">
+                            <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                        </button>
                     </div>
+                    
                     <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
                         <i class="fa fa-plus me-1"></i> Add
                     </button>
@@ -524,6 +536,29 @@
                         donationBtn.disabled = false;
                         alert('Network error. Please try again.');
                     });
+                };
+            }
+            // Donation minus button
+            var donationMinusBtn = getEl('.donationMinus');
+            if (donationMinusBtn) {
+                donationMinusBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    var donationInput = getEl('donationAmount');
+                    var val = parseInt(donationInput.value) || 1;
+                    val = Math.max(1, val - 1);
+                    donationInput.value = val;
+                };
+            }
+
+            // Donation plus button
+            var donationPlusBtn = getEl('.donationPlus');
+            if (donationPlusBtn) {
+                donationPlusBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    var donationInput = getEl('donationAmount');
+                    var val = parseInt(donationInput.value) || 1;
+                    val = val + 1;
+                    donationInput.value = val;
                 };
             }
 
