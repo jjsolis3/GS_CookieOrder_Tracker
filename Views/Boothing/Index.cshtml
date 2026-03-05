@@ -185,31 +185,40 @@
     <!-- ═══════════ DONATION QUICK-ADD ═══════════ -->
     <div class="card mb-3">
         <div class="card-body py-2">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa fa-heart text-danger"></i>
                     <span class="fw-bold">Add Donation</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-success btn-sm" id="addBoxDonationsBtn">
-                        <i class="fa fa-plus me-1"></i> Add 1 Box
-                    </button>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="input-group input-group-sm" style="width:180px">
-                        <span class="input-group-text">$</span>
-                        <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:28px;height:28px;padding:0">
-                            <i class="fa fa-minus" style="font-size:0.7rem"></i>
-                        </button>
-                        <input type="number" id="donationAmount" class="form-control" style="font-size:0.9rem" min="1.00" step="1.00" placeholder="0.00" />
-                        <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:28px;height:28px;padding:0">
-                            <i class="fa fa-plus" style="font-size:0.7rem"></i>
-                        </button>
+                    <div class="btn-group btn-group-sm gap-1" role="group" aria-label="Quick Donation">
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="1">$1.00</button>
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="5">$5.00</button>
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="10">$10.00</button>
                     </div>
-                    
-                    <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
-                        <i class="fa fa-plus me-1"></i> Add
-                    </button>
+                    <div class="d-flex align-items-center">
+                        <div class="input-group input-group-sm" style="width:180px">
+                            <span class="input-group-text">$</span>
+                            <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:33px;height:33px;padding:0">
+                                <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                            </button>
+                            <!-- Display Input field with 2 decimal significant numbers-->
+                            <input type="number" id="donationAmount" class="form-control text-center" style="font-size:0.8rem" min="0.00" step="1.00" placeholder="0.00" />
+                            <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:33px;height:33px;padding:0">
+                                <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Clear Donation">
+                            <button type="button" class="btn btn-outline-danger clear-donation" data-amt="0">Clear</button>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
+                                <i class="fa fa-plus me-1"></i> Add
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -538,29 +547,65 @@
                     });
                 };
             }
-            // Donation minus button
-            var donationMinusBtn = getEl('.donationMinus');
-            if (donationMinusBtn) {
-                donationMinusBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    var donationInput = getEl('donationAmount');
-                    var val = parseInt(donationInput.value) || 1;
-                    val = Math.max(1, val - 1);
-                    donationInput.value = val;
-                };
+            
+            // ══════════ DONATION +/- + QUICK ADD ══════════
+            const donationInput = getEl('donationAmount');
+            const donationMinusBtn = getEl('donationMinus');
+            const donationPlusBtn  = getEl('donationPlus');
+            const addBoxBtn        = getEl('addBoxDonationsBtn'); // Add 1 Box
+
+            function readDonation() {
+              const v = parseFloat(donationInput?.value || '');
+              return Number.isFinite(v) ? v : 0;
             }
 
-            // Donation plus button
-            var donationPlusBtn = getEl('.donationPlus');
-            if (donationPlusBtn) {
-                donationPlusBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    var donationInput = getEl('donationAmount');
-                    var val = parseInt(donationInput.value) || 1;
-                    val = val + 1;
-                    donationInput.value = val;
-                };
+            function writeDonation(v) {
+              const value = Math.max(0, Math.round(v * 100) / 100); // keep 2-decimal safe
+              if (!donationInput) return;
+
+              // show like "6" instead of "6.00" (optional)
+              donationInput.value = (value % 1 === 0) ? String(value) : value.toFixed(2);
             }
+
+            function bumpDonation(delta) {
+              writeDonation(readDonation() + delta);
+            }
+
+            if (donationMinusBtn) {
+              donationMinusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(-1.00);
+              });
+            }
+
+            if (donationPlusBtn) {
+              donationPlusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(1.00);
+              });
+            }
+
+            // ✅ Add 1 Box = +$6 each click
+            if (addBoxBtn) {
+              addBoxBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(6.00);
+              });
+            }
+
+            getAll('.quick-donation').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const amt = parseFloat(btn.dataset.amt || '0.00') || 0.00;
+                bumpDonation(amt);
+              });
+            });
+
+            document.querySelectorAll('.clear-donation').forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                writeDonation(0.00);
+              });
+            });
 
             // ══════════ SESSION TIMER ══════════
             var timerEl = getEl('sessionTimer');
