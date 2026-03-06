@@ -185,40 +185,32 @@
     <!-- ═══════════ DONATION QUICK-ADD ═══════════ -->
     <div class="card mb-3">
         <div class="card-body py-2">
-            <div class="d-flex align-items-center justify-content-between flex-wrap">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="fa fa-heart text-danger"></i>
-                    <span class="fw-bold">Add Donation</span>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa fa-heart text-danger"></i>
+                <span class="fw-bold">Add Donation</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="btn-group btn-group-sm gap-1" role="group" aria-label="Quick Donation">
+                    <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="1">$1.00</button>
+                    <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="5">$5.00</button>
+                    <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="10">$10.00</button>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="btn-group btn-group-sm gap-1" role="group" aria-label="Quick Donation">
-                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="1">$1.00</button>
-                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="5">$5.00</button>
-                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="10">$10.00</button>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <div class="input-group input-group-sm" style="width:180px">
-                            <span class="input-group-text">$</span>
-                            <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:33px;height:33px;padding:0">
-                                <i class="fa fa-minus" style="font-size:0.7rem"></i>
-                            </button>
-                            <!-- Display Input field with 2 decimal significant numbers-->
-                            <input type="number" id="donationAmount" class="form-control text-center" style="font-size:0.8rem" min="0.00" step="1.00" placeholder="0.00" />
-                            <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:33px;height:33px;padding:0">
-                                <i class="fa fa-plus" style="font-size:0.7rem"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Clear Donation">
-                            <button type="button" class="btn btn-outline-danger clear-donation" data-amt="0">Clear</button>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
-                                <i class="fa fa-plus me-1"></i> Add
-                            </button>
-                        </div>
-                    </div>
+                <div class="input-group input-group-sm" style="width:180px;min-width:180px">
+                    <span class="input-group-text">$</span>
+                    <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:33px;height:33px;padding:0">
+                        <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                    </button>
+                    <!-- Display Input field with 2 decimal significant numbers-->
+                    <input type="number" id="donationAmount" class="form-control text-center" style="font-size:0.8rem" min="0.00" step="1.00" placeholder="0.00" />
+                    <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:33px;height:33px;padding:0">
+                        <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm clear-donation" data-amt="0">Clear</button>
+                    <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
+                        <i class="fa fa-plus me-1"></i> Add
+                    </button>
                 </div>
             </div>
         </div>
