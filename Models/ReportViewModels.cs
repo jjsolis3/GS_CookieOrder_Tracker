@@ -19,9 +19,29 @@ public class ProductSummaryItem
     public string ProductName { get; set; } = "";
     public int TotalBoxes { get; set; }
     public decimal TotalValue { get; set; }
+    public int SortOrder { get; set; }
 }
 
-// ═══════════ PAYBACK REPORT ═══════════
+// ═══════════ ONLINE ORDERS REPORT ═══════════
+public class OnlineOrdersReportViewModel
+{
+    public List<Order> Orders { get; set; } = new();
+    public List<ProductSummaryItem> ProductSummary { get; set; } = new();
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+    public DateTime GeneratedAt { get; set; }
+}
+
+public class OnlineProductSummaryItem
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = "";
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+}
+
+// ═══════════ COLLECTIONS REPORT (outstanding customer payments) ═══════════
 public class PaybackReportViewModel
 {
     public DateTime DateFrom { get; set; }
@@ -41,6 +61,39 @@ public class CustomerPaybackSummary
     public decimal TotalOrdered { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalOwed { get; set; }
+}
+
+// ═══════════ TROOP PAYBACK REPORT (what we owe the troop) ═══════════
+public class TroopPaybackReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public List<PaybackProductBreakdown> ProductBreakdown { get; set; } = new();
+    public List<PaybackScoutSummary> ByScout { get; set; } = new();
+    public decimal TotalFromSales { get; set; }
+    public decimal TotalReturnedValue { get; set; }
+    public decimal TotalPaidBack { get; set; }
+    public decimal TotalOwedToTroop { get; set; }
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public DateTime GeneratedAt { get; set; }
+}
+
+public class PaybackProductBreakdown
+{
+    public string ProductName { get; set; } = "";
+    public decimal PricePerBox { get; set; }
+    public int BoxesSold { get; set; }
+    public decimal AmountOwed { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class PaybackScoutSummary
+{
+    public string ScoutName { get; set; } = "";
+    public int OrderCount { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalAmount { get; set; }
 }
 
 // ═══════════ SALES REPORT ═══════════
@@ -96,4 +149,102 @@ public class ProductStockLevel
     public int TotalReceived { get; set; }
     public int TotalSold { get; set; }
     public int TotalReturned { get; set; }
+    public int SortOrder { get; set; }
+}
+
+// ═══════════ ORDER SUMMARY REPORT (custom search/filter) ═══════════
+public class OrderSummaryReportViewModel
+{
+    public List<Order> Orders { get; set; } = new();
+    public List<ProductSummaryItem> ProductSummary { get; set; } = new();
+    public int TotalOrders { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalValue { get; set; }
+    public DateTime GeneratedAt { get; set; }
+
+    // Filter state (for display)
+    public string? CustomerSearch { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? OrderTypeFilter { get; set; }
+    public string? DateFrom { get; set; }
+    public string? DateTo { get; set; }
+    public string FilterDescription { get; set; } = "";
+}
+
+// ═══════════ BOOTH SESSION REPORT ═══════════
+public class BoothReportViewModel
+{
+    // Session selector (for the filter bar)
+    public List<BoothSessionOption> AvailableSessions { get; set; } = new();
+    public Guid? SelectedSessionId { get; set; }
+
+    // Session info
+    public string? Location { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? EndedAt { get; set; }
+    public int ScoutCount { get; set; }
+    public string? SessionNotes { get; set; }
+    public string Duration { get; set; } = "";
+
+    // KPIs
+    public int TotalSales { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal TotalDonations { get; set; }
+    public bool UsePersonalInventory { get; set; }
+
+    // Product summary (boxes sold)
+    public List<BoothProductSummary> ProductSummary { get; set; } = new();
+
+    // Booth inventory (starting vs sold vs remaining)
+    public List<BoothInventorySummary> InventorySummary { get; set; } = new();
+
+    // Per-scout breakdown
+    public List<BoothScoutSummary> ScoutBreakdown { get; set; } = new();
+
+    // Individual sales (grouped from booth_sales rows)
+    public List<BoothSaleDisplay> Sales { get; set; } = new();
+
+    // Payment method breakdown
+    public List<BoothPaymentSummary> PaymentBreakdown { get; set; } = new();
+
+    public DateTime GeneratedAt { get; set; }
+    public bool HasData => SelectedSessionId.HasValue && TotalSales > 0;
+}
+
+public class BoothSessionOption
+{
+    public Guid Id { get; set; }
+    public string Label { get; set; } = "";
+}
+
+public class BoothProductSummary
+{
+    public string ProductName { get; set; } = "";
+    public int BoxesSold { get; set; }
+    public decimal Revenue { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class BoothInventorySummary
+{
+    public string ProductName { get; set; } = "";
+    public int Starting { get; set; }
+    public int Sold { get; set; }
+    public int Remaining { get; set; }
+}
+
+public class BoothScoutSummary
+{
+    public string ScoutName { get; set; } = "";
+    public int SaleCount { get; set; }
+    public int TotalBoxes { get; set; }
+    public decimal TotalRevenue { get; set; }
+}
+
+public class BoothPaymentSummary
+{
+    public string Method { get; set; } = "";
+    public int Count { get; set; }
+    public decimal Total { get; set; }
 }

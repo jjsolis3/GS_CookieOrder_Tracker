@@ -1,4 +1,4 @@
-@model GS_CookieOrder_Tracker.Models.PendingOrdersReportViewModel
+@model GS_CookieOrder_Tracker.Models.OnlineOrdersReportViewModel
 
 @{
     Layout = null;
@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pending Orders Fulfillment Report</title>
+    <title>Online Orders Fulfillment Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -142,7 +142,7 @@
 
     <div class="report">
         <div class="header">
-            <h1>Pending Orders Fulfillment Report</h1>
+            <h1>Online Orders Fulfillment Report</h1>
             <div class="subtitle">Generated on @Model.GeneratedAt.ToPacific().ToString("MMMM d, yyyy 'at' h:mm tt")</div>
         </div>
 

@@ -18,6 +18,10 @@ public class OrdersIndexViewModel
     public int TotalPages { get; set; }
     public int TotalFilteredCount { get; set; }
 
+    // Sorting
+    public string? SortBy { get; set; }
+    public string? SortDir { get; set; }
+
     // Filters
     public string? SearchTerm { get; set; }
     public string? OrderTypeFilter { get; set; }

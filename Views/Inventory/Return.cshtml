@@ -5,48 +5,74 @@
 }
 
 <div class="row">
-    <div class="col-xl-8 col-12">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title">Return Product to Troop</h4>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-4">Use this form to return unsold boxes or cases back to the troop. Returned product will be removed from your personal inventory and payback responsibility.</p>
-                <form asp-action="Return" method="post">
+                <p class="text-muted mb-4">Tap the product to return, then enter the quantity. Returned product will be removed from your personal inventory and payback responsibility.</p>
+                <form asp-action="Return" method="post" id="returnForm">
                     @Html.AntiForgeryToken()
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label asp-for="ProductId" class="form-label">Product</label>
-                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select default-select">
-                                <option value="">-- Select Product --</option>
-                            </select>
-                            <span asp-validation-for="ProductId" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label asp-for="QuantityBoxes" class="form-label">Boxes</label>
-                            <input asp-for="QuantityBoxes" class="form-control" min="0" />
-                            <span asp-validation-for="QuantityBoxes" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label asp-for="QuantityCases" class="form-label">Cases</label>
-                            <input asp-for="QuantityCases" class="form-control" min="0" />
-                            <span asp-validation-for="QuantityCases" class="text-danger"></span>
-                        </div>
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <!-- Product Card Grid (single selection) -->
+                    <h5 class="card-title mb-3">Select Product</h5>
+                    <div class="row g-2 mb-3" id="returnProductGrid">
+                        @foreach (var card in Model.ProductCards)
+                        {
+                            var imgSrc = !string.IsNullOrEmpty(card.ImagePath) ? card.ImagePath : "/images/pre.gif";
+                            var isSelected = card.Id == Model.ProductId;
+                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                                <div class="card ret-product-card h-100 text-center border"
+                                     data-product-id="@card.Id"
+                                     style="cursor:pointer; transition: all 0.15s ease; @(isSelected ? "opacity:1; border-color:#e65100 !important; box-shadow:0 0 0 2px rgba(230,81,0,.25);" : "opacity:0.6;")">
+                                    <div class="card-body p-2">
+                                        <img src="@imgSrc" alt="@card.Name" class="mb-1 rounded" style="width:64px; height:64px; object-fit:contain;" />
+                                        <p class="mb-0 fw-bold small" style="line-height:1.2">@card.Name</p>
+                                        <small class="text-muted">@card.BoxesPerCase boxes/case</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label asp-for="Reason" class="form-label">Reason</label>
-                            <select asp-for="Reason" class="form-select default-select">
-                                <option value="">-- Select Reason --</option>
-                                <option value="Unsold">Unsold - Returning unsold product</option>
-                                <option value="Damaged">Damaged - Product was damaged</option>
-                                <option value="Excess">Excess - Over-ordered</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label asp-for="Notes" class="form-label">Notes</label>
-                            <input asp-for="Notes" class="form-control" placeholder="Optional notes..." />
+
+                    <input type="hidden" asp-for="ProductId" id="selectedProductId" />
+
+                    <!-- Return details (shown after product selection) -->
+                    <div id="returnDetails" class="@(Model.ProductId != Guid.Empty ? "" : "d-none")">
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6 class="mb-3">
+                                    Return details for: <strong id="returnProductName">@(Model.ProductCards.FirstOrDefault(p => p.Id == Model.ProductId)?.Name ?? "")</strong>
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label asp-for="QuantityBoxes" class="form-label fw-bold">Boxes</label>
+                                        <input asp-for="QuantityBoxes" class="form-control" min="0" />
+                                        <span asp-validation-for="QuantityBoxes" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label asp-for="QuantityCases" class="form-label fw-bold">Cases</label>
+                                        <input asp-for="QuantityCases" class="form-control" min="0" />
+                                        <span asp-validation-for="QuantityCases" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label asp-for="Reason" class="form-label fw-bold">Reason</label>
+                                        <select asp-for="Reason" class="form-select">
+                                            <option value="">-- Select --</option>
+                                            <option value="Unsold">Unsold</option>
+                                            <option value="Damaged">Damaged</option>
+                                            <option value="Excess">Excess</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label asp-for="Notes" class="form-label fw-bold">Notes</label>
+                                        <input asp-for="Notes" class="form-control" placeholder="Optional..." />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -64,4 +90,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            'use strict';
+
+            var cards = document.querySelectorAll('.ret-product-card');
+            var selectedProductId = document.getElementById('selectedProductId');
+            var returnDetails = document.getElementById('returnDetails');
+            var productNameEl = document.getElementById('returnProductName');
+
+            cards.forEach(function (card) {
+                card.addEventListener('click', function () {
+                    // Deselect all
+                    cards.forEach(function (c) {
+                        c.style.opacity = '0.6';
+                        c.style.borderColor = '';
+                        c.style.boxShadow = '';
+                    });
+
+                    // Select this one
+                    card.style.opacity = '1';
+                    card.style.borderColor = '#e65100';
+                    card.style.boxShadow = '0 0 0 2px rgba(230,81,0,.25)';
+
+                    selectedProductId.value = card.dataset.productId;
+                    productNameEl.textContent = card.querySelector('.fw-bold').textContent;
+                    returnDetails.classList.remove('d-none');
+                    document.getElementById('QuantityBoxes').focus();
+                });
+            });
+        })();
+    </script>
 }

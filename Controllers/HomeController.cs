@@ -37,7 +37,8 @@ public class HomeController : Controller
             .Include(r => r.Product)
             .SumAsync(r => (int?)(r.QuantityBoxes + r.QuantityCases * r.Product!.BoxesPerCase)) ?? 0;
 
-        var activeProducts = await _dbContext.Products.CountAsync(p => p.Active);
+        var boothBoxesSold = await _dbContext.BoothSales
+            .SumAsync(bs => (int?)bs.QuantityBoxes) ?? 0;
 
         // Orders
         var totalOrders = await _dbContext.Orders.CountAsync();
@@ -70,7 +71,7 @@ public class HomeController : Controller
                 Revenue = g.Sum(li => li.QuantityBoxes * li.UnitPrice)
             })
             .OrderByDescending(r => r.BoxesSold)
-            .Take(5)
+            .Take(9)
             .ToListAsync();
 
         // Recent orders
@@ -95,7 +96,7 @@ public class HomeController : Controller
             TotalBoxesOnHand = received - soldPersonal - returnedBoxes,
             TotalBoxesReceived = received,
             TotalBoxesSold = soldAll,
-            ActiveProducts = activeProducts,
+            BoothBoxesSold = boothBoxesSold,
             TotalOrders = totalOrders,
             PendingOrders = pendingOrders,
             TotalRevenue = totalRevenue,

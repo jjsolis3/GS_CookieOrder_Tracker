@@ -226,7 +226,7 @@
                     </div>
                     <div class="order-meta-row">
                         <span class="order-meta-label">Order Date</span>
-                        <span>@Model.OrderedAt.ToLocalTime().ToString("M/d/yyyy")</span>
+                        <span>@Model.OrderedAt.ToString("M/d/yyyy")</span>
                     </div>
                     @if (Model.DeliveryDate.HasValue)
                     {

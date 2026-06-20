@@ -77,15 +77,16 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-responsive-md table-hover">
+                    <table class="table table-responsive-md table-hover table-sortable">
                         <thead>
                             <tr>
                                 <th>Product</th>
                                 <th class="text-end">Received</th>
+                                <th class="text-end">On Hand</th>                                
                                 <th class="text-end">Sold (Personal)</th>
+                                <th class="text-end">Sold (Online)</th>
                                 <th class="text-end">Sold (Troop)</th>
                                 <th class="text-end">Returned</th>
-                                <th class="text-end">On Hand</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -95,7 +96,18 @@
                                 <tr>
                                     <td><strong>@p.ProductName</strong></td>
                                     <td class="text-end">@p.BoxesReceived</td>
+                                    <td class="text-end"><strong class="@onHandClass">@p.BoxesOnHand</strong></td>
                                     <td class="text-end">@p.BoxesSoldPersonal</td>
+                                    <td class="text-end">
+                                        @if (p.BoxesSoldOnline > 0)
+                                        {
+                                            <span class="text-info">@p.BoxesSoldOnline</span>
+                                        }
+                                        else
+                                        {
+                                            <span>0</span>
+                                        }
+                                    </td>
                                     <td class="text-end">@p.BoxesSoldTroop</td>
                                     <td class="text-end">
                                         @if (p.BoxesReturned > 0)
@@ -107,7 +119,7 @@
                                             <span>0</span>
                                         }
                                     </td>
-                                    <td class="text-end"><strong class="@onHandClass">@p.BoxesOnHand</strong></td>
+                                    
                                 </tr>
                             }
                         </tbody>
@@ -115,15 +127,16 @@
                             <tr class="fw-bold">
                                 <td>Totals</td>
                                 <td class="text-end">@Model.TotalBoxesReceived</td>
+                                <td class="text-end">@Model.TotalBoxesOnHand</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldPersonal)</td>
+                                <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldOnline)</td>
                                 <td class="text-end">@Model.Products.Sum(p => p.BoxesSoldTroop)</td>
                                 <td class="text-end">@Model.TotalBoxesReturned</td>
-                                <td class="text-end">@Model.TotalBoxesOnHand</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-                <p class="text-muted small mt-2 mb-0">On Hand = Received &minus; Sold (Personal) &minus; Returned. Troop/Booth sales do not reduce your personal inventory.</p>
+                <p class="text-muted small mt-2 mb-0">On Hand = Received &minus; Sold (Personal) &minus; Returned. Troop/Booth sales do not reduce your personal inventory. Online Delivery is a subset of Sold (Personal).</p>
             </div>
         </div>
     </div>
@@ -147,7 +160,7 @@
                 else
                 {
                     <div class="table-responsive">
-                        <table class="table table-responsive-md table-hover">
+                        <table class="table table-responsive-md table-hover table-sortable">
                             <thead>
                                 <tr>
                                     <th>Pickup Date</th>
@@ -251,13 +264,19 @@
                 </div>
 
                 <hr>
-                <h6 class="mb-2">Products Received</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Products Received</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="mdlAddReceiptLineBtn">
+                        <i class="fa fa-plus me-1"></i> Add Product
+                    </button>
+                </div>
                 <table class="table table-sm">
                     <thead>
                         <tr>
                             <th>Product</th>
-                            <th class="text-end">Boxes</th>
-                            <th class="text-end">Cases</th>
+                            <th class="text-end" style="width:90px">Boxes</th>
+                            <th class="text-end" style="width:90px">Cases</th>
+                            <th style="width:40px"></th>
                         </tr>
                     </thead>
                     <tbody id="mdlBatchReceipts"></tbody>
@@ -284,6 +303,93 @@
             var csrfMeta = document.querySelector('meta[name="csrf-token"]');
             var csrfToken = csrfMeta ? csrfMeta.content : '';
             var currentBatchId = null;
+            var productsList = []; // loaded once from server
+
+            // Load products for receipt dropdowns
+            fetch('@Url.Action("GetProducts", "Inventory")')
+                .then(function (r) { return r.json(); })
+                .then(function (data) { productsList = data; });
+
+            function buildProductSelect(selectedId) {
+                var html = '<select class="form-select form-select-sm receipt-product-select">';
+                html += '<option value="">-- Select --</option>';
+                productsList.forEach(function (p) {
+                    var sel = p.id === selectedId ? ' selected' : '';
+                    html += '<option value="' + p.id + '"' + sel + '>' + p.name + '</option>';
+                });
+                html += '</select>';
+                return html;
+            }
+
+            function addReceiptRow(productId, productName, boxes, cases) {
+                var tbody = document.getElementById('mdlBatchReceipts');
+                var tr = document.createElement('tr');
+                tr.className = 'receipt-edit-row';
+                tr.innerHTML = buildProductSelect(productId)
+                    + '<td><input type="number" class="form-control form-control-sm text-end receipt-boxes" value="' + boxes + '" min="0"></td>'
+                    + '<td><input type="number" class="form-control form-control-sm text-end receipt-cases" value="' + cases + '" min="0"></td>'
+                    + '<td><button type="button" class="btn btn-xs btn-outline-danger remove-receipt-btn" title="Remove"><i class="fa fa-times"></i></button></td>';
+                // Wrap the select in the first td
+                var firstTd = document.createElement('td');
+                firstTd.innerHTML = buildProductSelect(productId);
+                tr.innerHTML = '';
+                tr.appendChild(firstTd);
+                var boxesTd = document.createElement('td');
+                boxesTd.innerHTML = '<input type="number" class="form-control form-control-sm text-end receipt-boxes" value="' + boxes + '" min="0">';
+                tr.appendChild(boxesTd);
+                var casesTd = document.createElement('td');
+                casesTd.innerHTML = '<input type="number" class="form-control form-control-sm text-end receipt-cases" value="' + cases + '" min="0">';
+                tr.appendChild(casesTd);
+                var actionTd = document.createElement('td');
+                actionTd.innerHTML = '<button type="button" class="btn btn-xs btn-outline-danger remove-receipt-btn" title="Remove"><i class="fa fa-times"></i></button>';
+                tr.appendChild(actionTd);
+                tbody.appendChild(tr);
+            }
+
+            function updateTotals() {
+                var rows = document.querySelectorAll('#mdlBatchReceipts .receipt-edit-row');
+                var totalBoxes = 0, totalCases = 0;
+                rows.forEach(function (row) {
+                    totalBoxes += parseInt(row.querySelector('.receipt-boxes').value) || 0;
+                    totalCases += parseInt(row.querySelector('.receipt-cases').value) || 0;
+                });
+                document.getElementById('mdlBatchTotalBoxes').textContent = totalBoxes;
+                document.getElementById('mdlBatchTotalCases').textContent = totalCases;
+            }
+
+            function collectReceipts() {
+                var rows = document.querySelectorAll('#mdlBatchReceipts .receipt-edit-row');
+                var receipts = [];
+                rows.forEach(function (row) {
+                    var sel = row.querySelector('.receipt-product-select');
+                    receipts.push({
+                        productId: sel ? sel.value : '',
+                        quantityBoxes: parseInt(row.querySelector('.receipt-boxes').value) || 0,
+                        quantityCases: parseInt(row.querySelector('.receipt-cases').value) || 0
+                    });
+                });
+                return receipts;
+            }
+
+            // Remove receipt row (delegated)
+            document.getElementById('mdlBatchReceipts').addEventListener('click', function (e) {
+                var btn = e.target.closest('.remove-receipt-btn');
+                if (!btn) return;
+                btn.closest('tr').remove();
+                updateTotals();
+            });
+
+            // Update totals when inputs change (delegated)
+            document.getElementById('mdlBatchReceipts').addEventListener('input', function (e) {
+                if (e.target.classList.contains('receipt-boxes') || e.target.classList.contains('receipt-cases')) {
+                    updateTotals();
+                }
+            });
+
+            // Add new receipt line
+            document.getElementById('mdlAddReceiptLineBtn').addEventListener('click', function () {
+                addReceiptRow('', '', 0, 0);
+            });
 
             document.querySelectorAll('.batch-detail-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -291,80 +397,55 @@
                     fetch('@Url.Action("GetBatchDetail", "Inventory")?id=' + currentBatchId)
                         .then(function (r) { return r.json(); })
                         .then(function (d) {
-                            var statusEl = document.getElementById('mdlBatchStatus');
-                            var typeEl = document.getElementById('mdlBatchType');
-                            var dateEl = document.getElementById('mdlBatchPickupDate');
-                            var notesEl = document.getElementById('mdlBatchNotes');
-                            var scoutEl = document.getElementById('mdlBatchGirlScout');
-                            var boxesEl = document.getElementById('mdlBatchTotalBoxes');
-                            var casesEl = document.getElementById('mdlBatchTotalCases');
-
-                            if (statusEl) statusEl.value = d.status || 'Received';
-                            if (typeEl) typeEl.value = d.batchType || 'Initial Order';
-                            if (dateEl) dateEl.value = d.pickupDate || '';
-                            if (notesEl) notesEl.value = d.notes || '';
-                            if (scoutEl) scoutEl.textContent = d.girlScoutName || 'Unassigned';
-                            if (boxesEl) boxesEl.textContent = d.totalBoxes;
-                            if (casesEl) casesEl.textContent = d.totalCases;
+                            document.getElementById('mdlBatchStatus').value = d.status || 'Received';
+                            document.getElementById('mdlBatchType').value = d.batchType || 'Initial Order';
+                            document.getElementById('mdlBatchPickupDate').value = d.pickupDate || '';
+                            document.getElementById('mdlBatchNotes').value = d.notes || '';
+                            document.getElementById('mdlBatchGirlScout').textContent = d.girlScoutName || 'Unassigned';
+                            document.getElementById('mdlBatchTotalBoxes').textContent = d.totalBoxes;
+                            document.getElementById('mdlBatchTotalCases').textContent = d.totalCases;
 
                             var tbody = document.getElementById('mdlBatchReceipts');
-                            if (tbody) {
-                                tbody.innerHTML = '';
-                                d.receipts.forEach(function (r) {
-                                    var tr = document.createElement('tr');
-                                    tr.innerHTML = '<td>' + r.productName + '</td><td class="text-end">' + r.quantityBoxes + '</td><td class="text-end">' + r.quantityCases + '</td>';
-                                    tbody.appendChild(tr);
-                                });
-                            }
+                            tbody.innerHTML = '';
+                            d.receipts.forEach(function (r) {
+                                addReceiptRow(r.productId, r.productName, r.quantityBoxes, r.quantityCases);
+                            });
 
-                            var modalEl = document.getElementById('batchDetailModal');
-                            if (modalEl) {
-                                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                                modal.show();
-                            }
+                            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('batchDetailModal'));
+                            modal.show();
                         }).catch(function() { alert('Failed to load batch details.'); });
                 });
             });
 
-            var saveBtn = document.getElementById('mdlBatchSaveBtn');
-            if (saveBtn) {
-                saveBtn.addEventListener('click', function () {
-                    var statusEl = document.getElementById('mdlBatchStatus');
-                    var typeEl = document.getElementById('mdlBatchType');
-                    var dateEl = document.getElementById('mdlBatchPickupDate');
-                    var notesEl = document.getElementById('mdlBatchNotes');
+            document.getElementById('mdlBatchSaveBtn').addEventListener('click', function () {
+                fetch('@Url.Action("UpdateBatch", "Inventory")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({
+                        batchId: currentBatchId,
+                        status: document.getElementById('mdlBatchStatus').value,
+                        batchType: document.getElementById('mdlBatchType').value,
+                        pickupDate: document.getElementById('mdlBatchPickupDate').value || null,
+                        notes: document.getElementById('mdlBatchNotes').value || null,
+                        receipts: collectReceipts()
+                    })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
+                }).catch(function() { alert('Network error.'); });
+            });
 
-                    fetch('@Url.Action("UpdateBatch", "Inventory")', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                        body: JSON.stringify({
-                            batchId: currentBatchId,
-                            status: statusEl ? statusEl.value : null,
-                            batchType: typeEl ? typeEl.value : null,
-                            pickupDate: dateEl ? (dateEl.value || null) : null,
-                            notes: notesEl ? (notesEl.value || null) : null
-                        })
-                    }).then(function (r) {
-                        if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to save.'); });
-                    }).catch(function() { alert('Network error.'); });
-                });
-            }
-
-            var deleteBtn = document.getElementById('mdlBatchDeleteBtn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', function () {
-                    if (!confirm('Delete this batch and all its receipts? This cannot be undone.')) return;
-                    fetch('@Url.Action("DeleteBatch", "Inventory")', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                        body: JSON.stringify({ batchId: currentBatchId })
-                    }).then(function (r) {
-                        if (r.ok) location.reload();
-                        else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
-                    }).catch(function() { alert('Network error.'); });
-                });
-            }
+            document.getElementById('mdlBatchDeleteBtn').addEventListener('click', function () {
+                if (!confirm('Delete this batch and all its receipts? This cannot be undone.')) return;
+                fetch('@Url.Action("DeleteBatch", "Inventory")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify({ batchId: currentBatchId })
+                }).then(function (r) {
+                    if (r.ok) location.reload();
+                    else r.json().then(function (d) { alert(d.error || 'Failed to delete.'); });
+                }).catch(function() { alert('Network error.'); });
+            });
         })();
     </script>
 }

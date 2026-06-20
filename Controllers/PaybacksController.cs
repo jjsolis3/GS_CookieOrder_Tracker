@@ -1,4 +1,5 @@
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Helpers;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,14 +27,15 @@ public class PaybacksController : Controller
             .Include(li => li.Order)
             .Include(li => li.Product)
             .Where(li => li.Order!.OrderType != "Online Delivery")
-            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox, li.Product.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(li => li.QuantityBoxes)
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(r => r.ProductName)
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.ProductName)
             .ToListAsync();
 
         var owedFromSales = owedByProduct.Sum(r => r.AmountOwed);
@@ -45,19 +47,47 @@ public class PaybacksController : Controller
             .Distinct()
             .ToListAsync();
 
-        var paidByProduct = await _dbContext.OrderLineItems
+        var paidByProductFromOrders = await _dbContext.OrderLineItems
             .Include(li => li.Order)
             .Include(li => li.Product)
             .Where(li => li.OrderId != null && paidOrderIds.Contains(li.OrderId))
-            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox })
+            .GroupBy(li => new { li.Product!.Name, li.Product.PricePerBox, li.Product.SortOrder })
             .Select(g => new PaybackProductRow
             {
                 ProductName = g.Key.Name,
                 PricePerBox = g.Key.PricePerBox,
-                BoxesSold = g.Sum(li => li.QuantityBoxes)
+                BoxesSold = g.Sum(li => li.QuantityBoxes),
+                SortOrder = g.Key.SortOrder
             })
-            .OrderBy(r => r.ProductName)
             .ToListAsync();
+
+        // Also include product-based paybacks (no matching order)
+        var paidByProductDirect = await _dbContext.Paybacks
+            .Include(p => p.Product)
+            .Where(p => p.ProductId != null && p.Product != null && p.QuantityBoxes != null)
+            .GroupBy(p => new { p.Product!.Name, p.Product.PricePerBox, p.Product.SortOrder })
+            .Select(g => new PaybackProductRow
+            {
+                ProductName = g.Key.Name,
+                PricePerBox = g.Key.PricePerBox,
+                BoxesSold = g.Sum(p => p.QuantityBoxes ?? 0),
+                SortOrder = g.Key.SortOrder
+            })
+            .ToListAsync();
+
+        // Merge both sources
+        var paidByProduct = paidByProductFromOrders
+            .Concat(paidByProductDirect)
+            .GroupBy(r => new { r.ProductName, r.PricePerBox, r.SortOrder })
+            .Select(g => new PaybackProductRow
+            {
+                ProductName = g.Key.ProductName,
+                PricePerBox = g.Key.PricePerBox,
+                BoxesSold = g.Sum(r => r.BoxesSold),
+                SortOrder = g.Key.SortOrder
+            })
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.ProductName)
+            .ToList();
 
         // Subtract the value of returned product (returns remove payback responsibility)
         var returnedValue = await _dbContext.InventoryReturns
@@ -73,6 +103,7 @@ public class PaybacksController : Controller
 
         var recentPaymentsRaw = await _dbContext.Paybacks
             .Include(p => p.Order).ThenInclude(o => o!.Customer)
+            .Include(p => p.Product)
             .OrderByDescending(p => p.PaidAt)
             .Take(20)
             .Select(p => new PaybackPaymentRow
@@ -85,7 +116,9 @@ public class PaybacksController : Controller
                 OrderId = p.OrderId,
                 OrderInfo = p.Order != null
                     ? p.Order.OrderedAt.ToString("yyyy-MM-dd") + " - " + (p.Order.Customer != null ? p.Order.Customer.Name : "")
-                    : ""
+                    : p.Product != null
+                        ? p.Product.Name + " x" + (p.QuantityBoxes ?? 0)
+                        : ""
             })
             .ToListAsync();
 
@@ -115,11 +148,32 @@ public class PaybacksController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
+        // Orders already paid back — exclude from dropdown to prevent double-paying
+        var alreadyPaidOrderIds = await _dbContext.Paybacks
+            .Where(p => p.OrderId != null)
+            .Select(p => p.OrderId!.Value)
+            .Distinct()
+            .ToListAsync();
+
         var orders = await _dbContext.Orders
             .Include(o => o.Customer)
-            .Where(o => o.OrderType != "Online Delivery")
+            .Where(o => o.OrderType != "Online Delivery"
+                && !alreadyPaidOrderIds.Contains(o.Id))
             .OrderByDescending(o => o.OrderedAt)
             .Select(o => new { o.Id, o.OrderedAt, CustomerName = o.Customer!.Name, o.OrderType, o.TotalPrice })
+            .ToListAsync();
+
+        var productCards = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.Name)
+            .Select(p => new ProductCardItem
+            {
+                Id = p.Id,
+                Name = p.Name,
+                PricePerBox = p.PricePerBox,
+                BoxesPerCase = p.BoxesPerCase,
+                ImagePath = p.ImagePath
+            })
             .ToListAsync();
 
         var viewModel = new PaybackCreateViewModel
@@ -135,7 +189,8 @@ public class PaybacksController : Controller
                 new("Cash", "Cash"),
                 new("Bank Transfer", "Bank Transfer"),
                 new("Other", "Other")
-            }
+            },
+            ProductCards = productCards
         };
 
         return View(viewModel);
@@ -145,30 +200,74 @@ public class PaybacksController : Controller
     [HttpPost]
     public async Task<IActionResult> CreateMultiple([FromBody] CreateMultiplePaybacksRequest req)
     {
-        if (req.Items == null || req.Items.Count == 0)
-            return BadRequest(new { error = "At least one order is required." });
+        var hasOrderItems = req.Items != null && req.Items.Any(i => i.OrderId != Guid.Empty && i.Amount > 0);
+        var hasProductItems = req.ProductItems != null && req.ProductItems.Any(i => i.ProductId != Guid.Empty && i.Amount > 0);
+
+        if (!hasOrderItems && !hasProductItems)
+            return BadRequest(new { error = "At least one order or product is required." });
 
         var paidAt = DateTime.SpecifyKind(
             string.IsNullOrEmpty(req.PaidAt) ? DateTime.UtcNow : DateTime.Parse(req.PaidAt),
             DateTimeKind.Utc);
 
-        foreach (var item in req.Items)
+        // Double-pay prevention: check which orders are already paid back
+        if (hasOrderItems)
         {
-            if (item.OrderId == Guid.Empty || item.Amount <= 0) continue;
+            var requestedOrderIds = req.Items!.Where(i => i.OrderId != Guid.Empty).Select(i => i.OrderId).ToList();
+            var alreadyPaid = await _dbContext.Paybacks
+                .Where(p => p.OrderId != null && requestedOrderIds.Contains(p.OrderId.Value))
+                .Select(p => p.OrderId!.Value)
+                .Distinct()
+                .ToListAsync();
 
-            var payback = new Payback
+            if (alreadyPaid.Count > 0)
+                return BadRequest(new { error = $"{alreadyPaid.Count} order(s) have already been paid back. Please refresh the page." });
+        }
+
+        // Order-based paybacks
+        if (hasOrderItems)
+        {
+            foreach (var item in req.Items!)
             {
-                Id = Guid.NewGuid(),
-                OrderId = item.OrderId,
-                CustomerId = null, // Always payback to GS of GLA, no customer tracking needed
-                PaidAt = paidAt,
-                Amount = item.Amount,
-                Method = req.Method ?? "Check",
-                Notes = req.Notes,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _dbContext.Paybacks.Add(payback);
+                if (item.OrderId == Guid.Empty || item.Amount <= 0) continue;
+
+                _dbContext.Paybacks.Add(new Payback
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = item.OrderId,
+                    CustomerId = null,
+                    PaidAt = paidAt,
+                    Amount = item.Amount,
+                    Method = req.Method ?? "Check",
+                    Notes = req.Notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // Product-based paybacks (no matching order)
+        if (hasProductItems)
+        {
+            foreach (var item in req.ProductItems!)
+            {
+                if (item.ProductId == Guid.Empty || item.Amount <= 0) continue;
+
+                _dbContext.Paybacks.Add(new Payback
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = null,
+                    ProductId = item.ProductId,
+                    QuantityBoxes = item.QuantityBoxes,
+                    CustomerId = null,
+                    PaidAt = paidAt,
+                    Amount = item.Amount,
+                    Method = req.Method ?? "Check",
+                    Notes = req.Notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         await _dbContext.SaveChangesAsync();
@@ -226,10 +325,18 @@ public class CreateMultiplePaybacksRequest
     public string? Method { get; set; }
     public string? Notes { get; set; }
     public List<PaybackOrderItem> Items { get; set; } = new();
+    public List<PaybackProductItem>? ProductItems { get; set; }
 }
 
 public class PaybackOrderItem
 {
     public Guid OrderId { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public class PaybackProductItem
+{
+    public Guid ProductId { get; set; }
+    public int QuantityBoxes { get; set; }
     public decimal Amount { get; set; }
 }

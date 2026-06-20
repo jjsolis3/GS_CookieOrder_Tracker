@@ -72,7 +72,7 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
+                <table class="table table-sm table-hover table-sortable mb-0">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -82,6 +82,8 @@
                             <th class="text-center">Sales</th>
                             <th class="text-center">Boxes</th>
                             <th class="text-end">Revenue</th>
+                            <th class="text-end">Donations</th>
+                            <th>Source</th>
                             <th>Status</th>
                             <th style="width:70px"></th>
                         </tr>
@@ -97,13 +99,33 @@
                                 ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
                                 : $"{(int)duration.TotalMinutes}m";
                             <tr>
-                                <td class="text-nowrap">@s.StartedAt.ToString("MMM d, yyyy")</td>
+                                <td class="text-nowrap">@s.StartedAt.ToPacific().ToString("MMM d, yyyy")</td>
                                 <td>@s.Location</td>
                                 <td class="text-center">@s.ScoutCount</td>
                                 <td>@durationText</td>
                                 <td class="text-center">@s.SaleCount</td>
                                 <td class="text-center"><strong>@s.TotalBoxes</strong></td>
                                 <td class="text-end text-nowrap"><strong>@s.TotalRevenue.ToString("C")</strong></td>
+                                <td class="text-end text-nowrap">
+                                    @if (s.TotalDonations > 0)
+                                    {
+                                        <span class="text-warning">@s.TotalDonations.ToString("C")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (s.UsePersonalInventory)
+                                    {
+                                        <span class="badge bg-warning text-dark" style="font-size:0.7rem">Personal</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info text-dark" style="font-size:0.7rem">Troop</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (isActive)
                                     {
@@ -117,6 +139,9 @@
                                 <td>
                                     <a href="@Url.Action("ExportCsv", "Boothing", new { sessionId = s.Id })" class="btn btn-xs btn-outline-success" title="Export CSV">
                                         <i class="fa fa-download"></i>
+                                    </a>
+                                    <a href="@Url.Action("BoothReport", "Reports", new { sessionId = s.Id })" class="btn btn-xs btn-outline-warning" title="Print Report" target="_blank">
+                                        <i class="fa fa-print"></i>
                                     </a>
                                 </td>
                             </tr>
@@ -137,7 +162,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
+                <table class="table table-sm table-hover table-sortable mb-0">
                     <thead>
                         <tr>
                             <th style="width:35px">#</th>

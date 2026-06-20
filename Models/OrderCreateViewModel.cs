@@ -38,6 +38,9 @@ public class OrderCreateViewModel
 
     /// <summary>Product ID → PricePerBox, used by JS to auto-fill unit price.</summary>
     public Dictionary<string, decimal> ProductPrices { get; set; } = new();
+
+    /// <summary>Product cards with images for visual selection UI.</summary>
+    public List<ProductCardItem> ProductCards { get; set; } = new();
 }
 
 public class OrderLineItemViewModel

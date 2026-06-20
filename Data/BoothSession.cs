@@ -26,6 +26,12 @@ public class BoothSession
     [Column("notes")]
     public string? Notes { get; set; }
 
+    [Column("use_personal_inventory")]
+    public bool UsePersonalInventory { get; set; }
+
+    [Column("total_donations")]
+    public decimal TotalDonations { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -34,5 +40,6 @@ public class BoothSession
 
     // Navigation properties
     public List<Order> Orders { get; set; } = new();
+    public List<BoothSale> BoothSales { get; set; } = new();
     public List<BoothInventory> Inventory { get; set; } = new();
 }

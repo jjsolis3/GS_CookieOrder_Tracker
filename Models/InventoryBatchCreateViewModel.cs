@@ -27,6 +27,17 @@ public class InventoryBatchCreateViewModel
     public List<SelectListItem> Products { get; set; } = new();
     public List<SelectListItem> Statuses { get; set; } = new();
     public List<SelectListItem> BatchTypes { get; set; } = new();
+    public List<ProductCardItem> ProductCards { get; set; } = new();
+}
+
+/// <summary>Reusable product card data for visual product selection UI.</summary>
+public class ProductCardItem
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal PricePerBox { get; set; }
+    public int BoxesPerCase { get; set; }
+    public string? ImagePath { get; set; }
 }
 
 public class ReceiptLineViewModel

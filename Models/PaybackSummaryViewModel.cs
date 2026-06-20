@@ -21,6 +21,7 @@ public class PaybackProductRow
     public int BoxesSold { get; set; }
     public decimal PricePerBox { get; set; }
     public decimal AmountOwed => BoxesSold * PricePerBox;
+    public int SortOrder { get; set; }
 }
 
 public class PaybackPaymentRow

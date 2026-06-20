@@ -5,12 +5,13 @@ namespace GS_CookieOrder_Tracker.Models;
 public class BoothingViewModel
 {
     public DateTime SelectedDate { get; set; } = DateTime.UtcNow.Date;
-    public List<GS_CookieOrder_Tracker.Data.Order> Orders { get; set; } = new();
+    public List<BoothSaleDisplay> Sales { get; set; } = new();
 
     // KPI
     public int TotalSales { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalCollected { get; set; }
+    public decimal TotalDonations { get; set; }
 
     // Active booth session (null if none)
     public BoothSessionInfo? ActiveSession { get; set; }
@@ -40,6 +41,8 @@ public class BoothSessionInfo
     public DateTime StartedAt { get; set; }
     public int ScoutCount { get; set; }
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
+    public decimal TotalDonations { get; set; }
 }
 
 public class ProductCard
@@ -74,9 +77,11 @@ public class BoothSessionRow
     public DateTime? EndedAt { get; set; }
     public int ScoutCount { get; set; }
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
     public int SaleCount { get; set; }
     public int TotalBoxes { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal TotalDonations { get; set; }
 }
 
 public class ScoutContribution
@@ -98,4 +103,29 @@ public class BoothInventoryItem
     public int StartingQuantity { get; set; }
     public int SoldQuantity { get; set; }
     public int RemainingQuantity { get; set; }
+}
+
+/// <summary>
+/// Represents a grouped booth sale (one transaction that may contain multiple products).
+/// Replaces Order for booth sale display purposes.
+/// </summary>
+public class BoothSaleDisplay
+{
+    public Guid SaleGroupId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string? ScoutName { get; set; }
+    public Guid? GirlScoutId { get; set; }
+    public string? Notes { get; set; }
+    public int TotalQty { get; set; }
+    public decimal TotalPrice { get; set; }
+    public List<BoothSaleLineItem> LineItems { get; set; } = new();
+}
+
+public class BoothSaleLineItem
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = "";
+    public int QuantityBoxes { get; set; }
+    public decimal UnitPrice { get; set; }
 }

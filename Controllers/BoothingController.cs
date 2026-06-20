@@ -1,5 +1,6 @@
 using System.Text;
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Helpers;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,17 +14,45 @@ namespace GS_CookieOrder_Tracker.Controllers;
 public class BoothingController : Controller
 {
     private readonly AppDbContext _dbContext;
-    private const string LocationPrefix = "[Location: ";
 
     public BoothingController(AppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
+    // ───────── HELPER: Build BoothSaleDisplay list from BoothSale rows ─────────
+    private static List<BoothSaleDisplay> GroupBoothSales(List<BoothSale> boothSales)
+    {
+        return boothSales
+            .GroupBy(bs => bs.SaleGroupId ?? bs.Id) // fallback to Id for legacy rows without SaleGroupId
+            .Select(g => new BoothSaleDisplay
+            {
+                SaleGroupId = g.Key,
+                CreatedAt = g.Min(bs => bs.CreatedAt),
+                PaymentMethod = g.First().PaymentMethod,
+                ScoutName = g.First().GirlScout != null
+                    ? $"{g.First().GirlScout!.FirstName} {g.First().GirlScout!.LastName}"
+                    : null,
+                GirlScoutId = g.First().GirlScoutId,
+                Notes = g.First().Notes,
+                TotalQty = g.Sum(bs => bs.QuantityBoxes),
+                TotalPrice = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+                LineItems = g.Select(bs => new BoothSaleLineItem
+                {
+                    ProductId = bs.ProductId,
+                    ProductName = bs.Product?.Name ?? "Unknown",
+                    QuantityBoxes = bs.QuantityBoxes,
+                    UnitPrice = bs.UnitPrice
+                }).ToList()
+            })
+            .OrderByDescending(s => s.CreatedAt)
+            .ToList();
+    }
+
     // ───────── MAIN PAGE ─────────
     public async Task<IActionResult> Index(string? date)
     {
-        // Parse date and ensure it's UTC (PostgreSQL requires UTC for timestamp with time zone)
+        // Parse date and ensure it's UTC
         DateTime targetDate;
         if (string.IsNullOrEmpty(date))
         {
@@ -41,32 +70,32 @@ public class BoothingController : Controller
             .OrderByDescending(s => s.StartedAt)
             .FirstOrDefaultAsync();
 
-        // If there's an active session, show sales for that session
-        // Otherwise show sales for the target date
-        List<Order> orders;
+        // Load booth sales from booth_sales table
+        List<BoothSale> boothSales;
         if (activeSession != null)
         {
-            orders = await _dbContext.Orders
-                .Include(o => o.LineItems).ThenInclude(li => li.Product)
-                .Include(o => o.GirlScout)
-                .Where(o => o.BoothSessionId == activeSession.Id)
-                .OrderByDescending(o => o.CreatedAt)
+            boothSales = await _dbContext.BoothSales
+                .Include(bs => bs.Product)
+                .Include(bs => bs.GirlScout)
+                .Where(bs => bs.BoothSessionId == activeSession.Id)
+                .OrderByDescending(bs => bs.CreatedAt)
                 .ToListAsync();
         }
         else
         {
-            // Use date range comparison for UTC compatibility
-            var startOfDay = targetDate;
-            var endOfDay = targetDate.AddDays(1);
-            orders = await _dbContext.Orders
-                .Include(o => o.LineItems).ThenInclude(li => li.Product)
-                .Include(o => o.GirlScout)
-                .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt >= startOfDay && o.OrderedAt < endOfDay)
-                .OrderByDescending(o => o.CreatedAt)
+            // Show sales for the target date when no active session
+            var targetDateOnly = DateOnly.FromDateTime(targetDate);
+            boothSales = await _dbContext.BoothSales
+                .Include(bs => bs.Product)
+                .Include(bs => bs.GirlScout)
+                .Where(bs => bs.BoothDate == targetDateOnly)
+                .OrderByDescending(bs => bs.CreatedAt)
                 .ToListAsync();
         }
 
-        // Products with images for card grid (ordered by SortOrder, then Name)
+        var sales = GroupBoothSales(boothSales);
+
+        // Products with images for card grid
         var products = await _dbContext.Products
             .Where(p => p.Active)
             .OrderBy(p => p.SortOrder)
@@ -100,31 +129,13 @@ public class BoothingController : Controller
             .Take(10)
             .ToList();
 
-        // Fallback: also check old-style location-in-notes
-        if (!uniqueLocations.Any())
-        {
-            var noteLocations = await _dbContext.Orders
-                .Where(o => o.OrderType == "Booth Sale" && o.Notes != null && o.Notes.StartsWith(LocationPrefix))
-                .OrderByDescending(o => o.CreatedAt)
-                .Select(o => o.Notes!)
-                .Take(50)
-                .ToListAsync();
-
-            uniqueLocations = noteLocations
-                .Select(n => ExtractLocation(n))
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Distinct()
-                .Take(10)
-                .ToList()!;
-        }
-
         var vm = new BoothingViewModel
         {
             SelectedDate = targetDate,
-            Orders = orders,
-            TotalSales = orders.Sum(o => o.TotalQty ?? 0),
-            TotalRevenue = orders.Sum(o => o.TotalPrice ?? 0),
-            TotalCollected = orders.Sum(o => o.PaidAmount ?? 0),
+            Sales = sales,
+            TotalSales = boothSales.Sum(bs => bs.QuantityBoxes),
+            TotalRevenue = boothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+            TotalCollected = boothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
             ProductCards = productCards,
             Products = products.Select(p => new SelectListItem($"{p.Name} (${p.PricePerBox})", p.Id.ToString())).ToList(),
             ProductPrices = products.ToDictionary(p => p.Id.ToString(), p => p.PricePerBox),
@@ -138,13 +149,16 @@ public class BoothingController : Controller
             },
             Scouts = scouts,
             RecentLocations = uniqueLocations,
+            TotalDonations = activeSession?.TotalDonations ?? 0,
             ActiveSession = activeSession != null ? new BoothSessionInfo
             {
                 Id = activeSession.Id,
                 Location = activeSession.Location,
                 StartedAt = activeSession.StartedAt,
                 ScoutCount = activeSession.ScoutCount,
-                Notes = activeSession.Notes
+                Notes = activeSession.Notes,
+                UsePersonalInventory = activeSession.UsePersonalInventory,
+                TotalDonations = activeSession.TotalDonations
             } : null,
             // Include booth inventory if there's an active session
             BoothInventoryItems = activeSession != null
@@ -165,14 +179,6 @@ public class BoothingController : Controller
         };
 
         return View(vm);
-    }
-
-    private static string? ExtractLocation(string? notes)
-    {
-        if (string.IsNullOrEmpty(notes) || !notes.StartsWith(LocationPrefix)) return null;
-        var endIdx = notes.IndexOf(']', LocationPrefix.Length);
-        if (endIdx < 0) return null;
-        return notes.Substring(LocationPrefix.Length, endIdx - LocationPrefix.Length);
     }
 
     // ───────── START BOOTH SESSION ─────────
@@ -199,6 +205,8 @@ public class BoothingController : Controller
             StartedAt = DateTime.UtcNow,
             ScoutCount = req.ScoutCount > 0 ? req.ScoutCount : 1,
             Notes = req.Notes?.Trim(),
+            UsePersonalInventory = req.UsePersonalInventory,
+            TotalDonations = 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -249,7 +257,28 @@ public class BoothingController : Controller
         return Ok(new { success = true });
     }
 
-    // ───────── QUICK ADD BOOTH SALE ─────────
+    // ───────── ADD DONATION ─────────
+    [HttpPost]
+    public async Task<IActionResult> AddDonation([FromBody] AddDonationRequest req)
+    {
+        if (req.Amount <= 0)
+            return BadRequest(new { error = "Donation amount must be greater than zero." });
+
+        var session = await _dbContext.BoothSessions.FindAsync(req.SessionId);
+        if (session == null) return NotFound(new { error = "Session not found." });
+
+        session.TotalDonations += req.Amount;
+        session.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            totalDonations = session.TotalDonations
+        });
+    }
+
+    // ───────── QUICK ADD BOOTH SALE (writes to booth_sales table) ─────────
     [HttpPost]
     public async Task<IActionResult> QuickAdd([FromBody] QuickBoothSaleRequest req)
     {
@@ -268,13 +297,17 @@ public class BoothingController : Controller
         var totalQty = req.Items.Sum(i => i.Qty);
         var totalPrice = req.Items.Sum(i => i.Qty * (products.ContainsKey(i.ProductId) ? products[i.ProductId].PricePerBox : 0));
 
-        // Format notes: prepend location if provided (for non-session sales)
-        var notes = "";
-        if (!string.IsNullOrWhiteSpace(req.Location) && req.SessionId == null)
-            notes = $"{LocationPrefix}{req.Location.Trim()}] ";
-        if (!string.IsNullOrWhiteSpace(req.Notes))
-            notes += req.Notes.Trim();
-        notes = notes.Trim();
+        // Resolve location from session or request
+        var location = "";
+        if (req.SessionId.HasValue)
+        {
+            var session = await _dbContext.BoothSessions.FindAsync(req.SessionId.Value);
+            if (session != null) location = session.Location;
+        }
+        else if (!string.IsNullOrWhiteSpace(req.Location))
+        {
+            location = req.Location.Trim();
+        }
 
         // Resolve scout name if provided
         string? scoutName = null;
@@ -284,25 +317,17 @@ public class BoothingController : Controller
             if (scout != null) scoutName = $"{scout.FirstName} {scout.LastName}";
         }
 
-        var order = new Order
-        {
-            Id = Guid.NewGuid(),
-            OrderType = "Booth Sale",
-            Status = "Completed",
-            PaymentMethod = req.PaymentMethod ?? "Cash",
-            IsOnlinePaid = false,
-            OrderedAt = targetDate,
-            Notes = string.IsNullOrEmpty(notes) ? null : notes,
-            TotalQty = totalQty,
-            TotalPrice = totalPrice,
-            PaidAmount = totalPrice,
-            BoothSessionId = req.SessionId,
-            GirlScoutId = req.GirlScoutId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var saleGroupId = Guid.NewGuid();
+        var boothDate = DateOnly.FromDateTime(targetDate);
+        var notes = req.Notes?.Trim();
 
-        _dbContext.Orders.Add(order);
+        // Check if this session uses personal inventory
+        bool usePersonalInventory = false;
+        if (req.SessionId.HasValue)
+        {
+            var sessionForFlag = await _dbContext.BoothSessions.FindAsync(req.SessionId.Value);
+            if (sessionForFlag != null) usePersonalInventory = sessionForFlag.UsePersonalInventory;
+        }
 
         // If this is a session sale, load booth inventory to update sold quantities
         Dictionary<Guid, BoothInventory>? boothInventory = null;
@@ -316,24 +341,70 @@ public class BoothingController : Controller
         var lineItemDetails = new List<object>();
         var inventoryWarnings = new List<string>();
 
+        // If using personal inventory, create a corresponding Order to deduct from Girl Scout inventory
+        Order? personalInventoryOrder = null;
+        if (usePersonalInventory)
+        {
+            personalInventoryOrder = new Order
+            {
+                Id = Guid.NewGuid(),
+                OrderType = "Booth Sale",
+                Status = "Completed",
+                PaymentMethod = req.PaymentMethod ?? "Cash",
+                IsOnlinePaid = false,
+                OrderedAt = targetDate,
+                Notes = $"Booth sale (personal inventory) - {location}",
+                TotalQty = totalQty,
+                TotalPrice = totalPrice,
+                PaidAmount = totalPrice,
+                BoothSessionId = req.SessionId,
+                GirlScoutId = req.GirlScoutId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.Orders.Add(personalInventoryOrder);
+        }
+
         foreach (var item in req.Items)
         {
             if (!products.ContainsKey(item.ProductId)) continue;
 
-            _dbContext.OrderLineItems.Add(new OrderLineItem
+            _dbContext.BoothSales.Add(new BoothSale
             {
                 Id = Guid.NewGuid(),
-                OrderId = order.Id,
+                BoothSessionId = req.SessionId,
+                SaleGroupId = saleGroupId,
+                BoothDate = boothDate,
+                Location = location,
                 ProductId = item.ProductId,
                 QuantityBoxes = item.Qty,
                 UnitPrice = products[item.ProductId].PricePerBox,
-                InventorySource = "Troop",
+                FromPersonalInventory = usePersonalInventory,
+                GirlScoutId = req.GirlScoutId,
+                PaymentMethod = req.PaymentMethod ?? "Cash",
+                Notes = string.IsNullOrEmpty(notes) ? null : notes,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
 
-            // Update booth inventory sold quantity
-            if (boothInventory != null && boothInventory.TryGetValue(item.ProductId, out var bi))
+            // If using personal inventory, also create OrderLineItems to deduct from personal stock
+            if (usePersonalInventory && personalInventoryOrder != null)
+            {
+                _dbContext.OrderLineItems.Add(new OrderLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = personalInventoryOrder.Id,
+                    ProductId = item.ProductId,
+                    QuantityBoxes = item.Qty,
+                    UnitPrice = products[item.ProductId].PricePerBox,
+                    InventorySource = "Personal",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            // Update booth inventory sold quantity (only if NOT personal inventory - troop stock tracking)
+            if (!usePersonalInventory && boothInventory != null && boothInventory.TryGetValue(item.ProductId, out var bi))
             {
                 bi.SoldQuantity += item.Qty;
                 bi.UpdatedAt = DateTime.UtcNow;
@@ -359,12 +430,12 @@ public class BoothingController : Controller
         decimal sessionTotalRevenue = 0;
         if (req.SessionId.HasValue)
         {
-            var sessionOrders = await _dbContext.Orders
-                .Where(o => o.BoothSessionId == req.SessionId.Value)
+            var sessionSales = await _dbContext.BoothSales
+                .Where(bs => bs.BoothSessionId == req.SessionId.Value)
                 .ToListAsync();
-            sessionSaleCount = sessionOrders.Count;
-            sessionTotalBoxes = sessionOrders.Sum(o => o.TotalQty ?? 0);
-            sessionTotalRevenue = sessionOrders.Sum(o => o.TotalPrice ?? 0);
+            sessionSaleCount = sessionSales.Select(bs => bs.SaleGroupId).Distinct().Count();
+            sessionTotalBoxes = sessionSales.Sum(bs => bs.QuantityBoxes);
+            sessionTotalRevenue = sessionSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice);
         }
 
         // Get updated booth inventory for response
@@ -388,20 +459,20 @@ public class BoothingController : Controller
         return Ok(new
         {
             success = true,
-            orderId = order.Id,
+            saleGroupId,
             // Sale details for adding row to table
             sale = new
             {
-                id = order.Id,
-                time = order.CreatedAt.ToString("h:mm tt"),
+                id = saleGroupId,
+                time = DateTime.UtcNow.ToPacific().ToString("h:mm tt"),
                 products = string.Join(", ", lineItemDetails.Select(li =>
                 {
                     var d = (dynamic)li;
                     return $"{d.productName} x{d.qty}";
                 })),
-                paymentMethod = order.PaymentMethod,
-                totalQty = order.TotalQty,
-                totalPrice = order.TotalPrice,
+                paymentMethod = req.PaymentMethod ?? "Cash",
+                totalQty = totalQty,
+                totalPrice = totalPrice,
                 scoutName = scoutName
             },
             // Updated session KPIs for real-time counter
@@ -421,28 +492,30 @@ public class BoothingController : Controller
     [HttpGet]
     public async Task<IActionResult> GetSaleDetail(Guid id)
     {
-        var order = await _dbContext.Orders
-            .Include(o => o.LineItems).ThenInclude(li => li.Product)
-            .Include(o => o.GirlScout)
-            .FirstOrDefaultAsync(o => o.Id == id);
+        var saleRows = await _dbContext.BoothSales
+            .Include(bs => bs.Product)
+            .Include(bs => bs.GirlScout)
+            .Where(bs => bs.SaleGroupId == id || bs.Id == id)
+            .ToListAsync();
 
-        if (order == null) return NotFound();
+        if (!saleRows.Any()) return NotFound();
 
+        var first = saleRows.First();
         return Json(new
         {
-            id = order.Id,
-            paymentMethod = order.PaymentMethod,
-            notes = order.Notes,
-            girlScoutId = order.GirlScoutId,
-            scoutName = order.GirlScout != null ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}" : null,
-            lineItems = order.LineItems.Select(li => new
+            id = first.SaleGroupId ?? first.Id,
+            paymentMethod = first.PaymentMethod,
+            notes = first.Notes,
+            girlScoutId = first.GirlScoutId,
+            scoutName = first.GirlScout != null ? $"{first.GirlScout.FirstName} {first.GirlScout.LastName}" : null,
+            lineItems = saleRows.Select(bs => new
             {
-                id = li.Id,
-                productId = li.ProductId,
-                productName = li.Product?.Name,
-                quantityBoxes = li.QuantityBoxes,
-                unitPrice = li.UnitPrice,
-                lineTotal = li.QuantityBoxes * li.UnitPrice
+                id = bs.Id,
+                productId = bs.ProductId,
+                productName = bs.Product?.Name,
+                quantityBoxes = bs.QuantityBoxes,
+                unitPrice = bs.UnitPrice,
+                lineTotal = bs.QuantityBoxes * bs.UnitPrice
             })
         });
     }
@@ -451,54 +524,91 @@ public class BoothingController : Controller
     [HttpPost]
     public async Task<IActionResult> UpdateSale([FromBody] UpdateBoothSaleRequest req)
     {
-        var order = await _dbContext.Orders
-            .Include(o => o.LineItems)
-            .FirstOrDefaultAsync(o => o.Id == req.OrderId);
+        var saleRows = await _dbContext.BoothSales
+            .Where(bs => bs.SaleGroupId == req.SaleGroupId || bs.Id == req.SaleGroupId)
+            .ToListAsync();
 
-        if (order == null) return NotFound(new { error = "Sale not found." });
+        if (!saleRows.Any()) return NotFound(new { error = "Sale not found." });
 
-        // Update payment method, notes, and scout
-        order.PaymentMethod = req.PaymentMethod ?? order.PaymentMethod;
-        order.Notes = req.Notes;
-        order.GirlScoutId = req.GirlScoutId;
-        order.UpdatedAt = DateTime.UtcNow;
+        var sessionId = saleRows.First().BoothSessionId;
+        var boothDate = saleRows.First().BoothDate;
+        var location = saleRows.First().Location;
 
         if (req.Items != null && req.Items.Count > 0)
         {
-            // Remove old line items
-            _dbContext.OrderLineItems.RemoveRange(order.LineItems);
+            // Reverse booth inventory for old items
+            if (sessionId.HasValue)
+            {
+                var boothInventory = await _dbContext.BoothInventories
+                    .Where(bi => bi.BoothSessionId == sessionId.Value)
+                    .ToDictionaryAsync(bi => bi.ProductId);
+
+                foreach (var oldRow in saleRows)
+                {
+                    if (boothInventory.TryGetValue(oldRow.ProductId, out var bi))
+                    {
+                        bi.SoldQuantity -= oldRow.QuantityBoxes;
+                        bi.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+            }
+
+            // Remove old sale rows
+            _dbContext.BoothSales.RemoveRange(saleRows);
 
             var productIds = req.Items.Select(i => i.ProductId).ToList();
             var products = await _dbContext.Products
                 .Where(p => productIds.Contains(p.Id))
                 .ToDictionaryAsync(p => p.Id);
 
-            var totalQty = 0;
-            decimal totalPrice = 0;
+            // Re-add booth inventory for new items
+            Dictionary<Guid, BoothInventory>? newBoothInventory = null;
+            if (sessionId.HasValue)
+            {
+                newBoothInventory = await _dbContext.BoothInventories
+                    .Where(bi => bi.BoothSessionId == sessionId.Value)
+                    .ToDictionaryAsync(bi => bi.ProductId);
+            }
 
             foreach (var item in req.Items)
             {
                 if (!products.ContainsKey(item.ProductId) || item.Qty <= 0) continue;
-                var price = products[item.ProductId].PricePerBox;
-                totalQty += item.Qty;
-                totalPrice += item.Qty * price;
 
-                _dbContext.OrderLineItems.Add(new OrderLineItem
+                _dbContext.BoothSales.Add(new BoothSale
                 {
                     Id = Guid.NewGuid(),
-                    OrderId = order.Id,
+                    BoothSessionId = sessionId,
+                    SaleGroupId = req.SaleGroupId,
+                    BoothDate = boothDate,
+                    Location = location,
                     ProductId = item.ProductId,
                     QuantityBoxes = item.Qty,
-                    UnitPrice = price,
-                    InventorySource = "Troop",
-                    CreatedAt = DateTime.UtcNow,
+                    UnitPrice = products[item.ProductId].PricePerBox,
+                    FromPersonalInventory = false,
+                    GirlScoutId = req.GirlScoutId,
+                    PaymentMethod = req.PaymentMethod ?? saleRows.First().PaymentMethod ?? "Cash",
+                    Notes = req.Notes,
+                    CreatedAt = saleRows.First().CreatedAt,
                     UpdatedAt = DateTime.UtcNow
                 });
-            }
 
-            order.TotalQty = totalQty;
-            order.TotalPrice = totalPrice;
-            order.PaidAmount = totalPrice;
+                if (newBoothInventory != null && newBoothInventory.TryGetValue(item.ProductId, out var bi))
+                {
+                    bi.SoldQuantity += item.Qty;
+                    bi.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+        else
+        {
+            // Only updating payment method, notes, and scout (no product changes)
+            foreach (var row in saleRows)
+            {
+                row.PaymentMethod = req.PaymentMethod ?? row.PaymentMethod;
+                row.Notes = req.Notes;
+                row.GirlScoutId = req.GirlScoutId;
+                row.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         await _dbContext.SaveChangesAsync();
@@ -509,14 +619,32 @@ public class BoothingController : Controller
     [HttpPost]
     public async Task<IActionResult> DeleteSale([FromBody] DeleteBoothSaleRequest req)
     {
-        var order = await _dbContext.Orders
-            .Include(o => o.LineItems)
-            .FirstOrDefaultAsync(o => o.Id == req.OrderId);
+        var saleRows = await _dbContext.BoothSales
+            .Where(bs => bs.SaleGroupId == req.SaleGroupId || bs.Id == req.SaleGroupId)
+            .ToListAsync();
 
-        if (order == null) return NotFound(new { error = "Sale not found." });
+        if (!saleRows.Any()) return NotFound(new { error = "Sale not found." });
 
-        _dbContext.OrderLineItems.RemoveRange(order.LineItems);
-        _dbContext.Orders.Remove(order);
+        // Reverse booth inventory sold quantities
+        var sessionId = saleRows.First().BoothSessionId;
+        if (sessionId.HasValue)
+        {
+            var boothInventory = await _dbContext.BoothInventories
+                .Where(bi => bi.BoothSessionId == sessionId.Value)
+                .ToDictionaryAsync(bi => bi.ProductId);
+
+            foreach (var row in saleRows)
+            {
+                if (boothInventory.TryGetValue(row.ProductId, out var bi))
+                {
+                    bi.SoldQuantity -= row.QuantityBoxes;
+                    if (bi.SoldQuantity < 0) bi.SoldQuantity = 0;
+                    bi.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        _dbContext.BoothSales.RemoveRange(saleRows);
         await _dbContext.SaveChangesAsync();
 
         return Ok(new { success = true });
@@ -530,18 +658,18 @@ public class BoothingController : Controller
             ? DateTime.UtcNow.Date
             : DateTime.Parse(date).Date;
 
-        List<Order> orders;
+        List<BoothSale> boothSales;
         string fileLabel;
         BoothSession? session = null;
 
         if (sessionId.HasValue)
         {
             session = await _dbContext.BoothSessions.FindAsync(sessionId.Value);
-            orders = await _dbContext.Orders
-                .Include(o => o.LineItems).ThenInclude(li => li.Product)
-                .Include(o => o.GirlScout)
-                .Where(o => o.BoothSessionId == sessionId.Value)
-                .OrderBy(o => o.CreatedAt)
+            boothSales = await _dbContext.BoothSales
+                .Include(bs => bs.Product)
+                .Include(bs => bs.GirlScout)
+                .Where(bs => bs.BoothSessionId == sessionId.Value)
+                .OrderBy(bs => bs.CreatedAt)
                 .ToListAsync();
             fileLabel = session != null
                 ? $"booth-{session.Location.Replace(" ", "-")}-{session.StartedAt:yyyy-MM-dd}"
@@ -549,14 +677,17 @@ public class BoothingController : Controller
         }
         else
         {
-            orders = await _dbContext.Orders
-                .Include(o => o.LineItems).ThenInclude(li => li.Product)
-                .Include(o => o.GirlScout)
-                .Where(o => o.OrderType == "Booth Sale" && o.OrderedAt.Date == targetDate)
-                .OrderBy(o => o.CreatedAt)
+            var targetDateOnly = DateOnly.FromDateTime(targetDate);
+            boothSales = await _dbContext.BoothSales
+                .Include(bs => bs.Product)
+                .Include(bs => bs.GirlScout)
+                .Where(bs => bs.BoothDate == targetDateOnly)
+                .OrderBy(bs => bs.CreatedAt)
                 .ToListAsync();
             fileLabel = $"booth-sales-{targetDate:yyyy-MM-dd}";
         }
+
+        var sales = GroupBoothSales(boothSales).OrderBy(s => s.CreatedAt).ToList();
 
         var sb = new StringBuilder();
 
@@ -568,6 +699,9 @@ public class BoothingController : Controller
             if (session.EndedAt.HasValue)
                 sb.AppendLine($"Ended: {session.EndedAt.Value:yyyy-MM-dd HH:mm}");
             sb.AppendLine($"Scout Count: {session.ScoutCount}");
+            sb.AppendLine($"Inventory Source: {(session.UsePersonalInventory ? "Personal" : "Troop")}");
+            if (session.TotalDonations > 0)
+                sb.AppendLine($"Donations: {session.TotalDonations:C}");
             if (!string.IsNullOrWhiteSpace(session.Notes))
                 sb.AppendLine($"Notes: {session.Notes}");
             sb.AppendLine();
@@ -576,40 +710,27 @@ public class BoothingController : Controller
         sb.AppendLine("Sale #,Time,Scout,Products,Payment Method,Boxes,Total,Notes");
 
         var counter = 1;
-        foreach (var order in orders)
+        foreach (var sale in sales)
         {
-            var notes = order.Notes ?? "";
-            if (notes.StartsWith(LocationPrefix))
-            {
-                var endIdx = notes.IndexOf(']');
-                if (endIdx >= 0 && endIdx + 1 < notes.Length)
-                    notes = notes.Substring(endIdx + 1).Trim();
-                else
-                    notes = "";
-            }
+            var products = string.Join("; ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"));
 
-            var products = string.Join("; ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"));
-            var scoutName = order.GirlScout != null
-                ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}"
-                : "";
-
-            sb.AppendLine($"{counter},{order.CreatedAt:HH:mm},\"{EscapeCsv(scoutName)}\",\"{EscapeCsv(products)}\",{order.PaymentMethod},{order.TotalQty},{order.TotalPrice:F2},\"{EscapeCsv(notes)}\"");
+            sb.AppendLine($"{counter},{sale.CreatedAt:HH:mm},\"{EscapeCsv(sale.ScoutName)}\",\"{EscapeCsv(products)}\",{sale.PaymentMethod},{sale.TotalQty},{sale.TotalPrice:F2},\"{EscapeCsv(sale.Notes)}\"");
             counter++;
         }
 
         sb.AppendLine();
-        sb.AppendLine($"TOTALS,,,,,{orders.Sum(o => o.TotalQty ?? 0)},{orders.Sum(o => o.TotalPrice ?? 0):F2},");
+        sb.AppendLine($"TOTALS,,,,,{sales.Sum(s => s.TotalQty)},{sales.Sum(s => s.TotalPrice):F2},");
 
         // Per-scout breakdown
-        var scoutGroups = orders
-            .Where(o => o.GirlScout != null)
-            .GroupBy(o => new { o.GirlScoutId, Name = $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}" })
+        var scoutGroups = sales
+            .Where(s => !string.IsNullOrEmpty(s.ScoutName))
+            .GroupBy(s => new { s.GirlScoutId, s.ScoutName })
             .Select(g => new
             {
-                g.Key.Name,
+                Name = g.Key.ScoutName ?? "",
                 Sales = g.Count(),
-                Boxes = g.Sum(o => o.TotalQty ?? 0),
-                Revenue = g.Sum(o => o.TotalPrice ?? 0)
+                Boxes = g.Sum(s => s.TotalQty),
+                Revenue = g.Sum(s => s.TotalPrice)
             })
             .OrderByDescending(g => g.Boxes)
             .ToList();
@@ -624,10 +745,10 @@ public class BoothingController : Controller
                 sb.AppendLine($"\"{EscapeCsv(sg.Name)}\",{sg.Sales},{sg.Boxes},{sg.Revenue:F2}");
             }
 
-            var unattributed = orders.Where(o => o.GirlScout == null).ToList();
+            var unattributed = sales.Where(s => string.IsNullOrEmpty(s.ScoutName)).ToList();
             if (unattributed.Any())
             {
-                sb.AppendLine($"\"(Unattributed)\",{unattributed.Count},{unattributed.Sum(o => o.TotalQty ?? 0)},{unattributed.Sum(o => o.TotalPrice ?? 0):F2}");
+                sb.AppendLine($"\"(Unattributed)\",{unattributed.Count},{unattributed.Sum(s => s.TotalQty)},{unattributed.Sum(s => s.TotalPrice):F2}");
             }
         }
 
@@ -640,7 +761,7 @@ public class BoothingController : Controller
     public async Task<IActionResult> History()
     {
         var sessions = await _dbContext.BoothSessions
-            .Include(s => s.Orders)
+            .Include(s => s.BoothSales)
             .OrderByDescending(s => s.StartedAt)
             .ToListAsync();
 
@@ -652,26 +773,28 @@ public class BoothingController : Controller
             EndedAt = s.EndedAt,
             ScoutCount = s.ScoutCount,
             Notes = s.Notes,
-            SaleCount = s.Orders.Count,
-            TotalBoxes = s.Orders.Sum(o => o.TotalQty ?? 0),
-            TotalRevenue = s.Orders.Sum(o => o.TotalPrice ?? 0)
+            UsePersonalInventory = s.UsePersonalInventory,
+            SaleCount = s.BoothSales.Select(bs => bs.SaleGroupId).Distinct().Count(),
+            TotalBoxes = s.BoothSales.Sum(bs => bs.QuantityBoxes),
+            TotalRevenue = s.BoothSales.Sum(bs => bs.QuantityBoxes * bs.UnitPrice),
+            TotalDonations = s.TotalDonations
         }).ToList();
 
         // Per-scout breakdown across all booth sales
-        var allBoothOrders = await _dbContext.Orders
-            .Include(o => o.GirlScout)
-            .Where(o => o.OrderType == "Booth Sale" && o.GirlScoutId != null)
+        var allBoothSales = await _dbContext.BoothSales
+            .Include(bs => bs.GirlScout)
+            .Where(bs => bs.GirlScoutId != null)
             .ToListAsync();
 
-        var scoutBreakdown = allBoothOrders
-            .GroupBy(o => new { o.GirlScoutId, Name = $"{o.GirlScout!.FirstName} {o.GirlScout.LastName}" })
+        var scoutBreakdown = allBoothSales
+            .GroupBy(bs => new { bs.GirlScoutId, Name = $"{bs.GirlScout!.FirstName} {bs.GirlScout.LastName}" })
             .Select(g => new ScoutContribution
             {
                 ScoutId = g.Key.GirlScoutId!.Value,
                 ScoutName = g.Key.Name,
-                SaleCount = g.Count(),
-                TotalBoxes = g.Sum(o => o.TotalQty ?? 0),
-                TotalRevenue = g.Sum(o => o.TotalPrice ?? 0)
+                SaleCount = g.Select(bs => bs.SaleGroupId).Distinct().Count(),
+                TotalBoxes = g.Sum(bs => bs.QuantityBoxes),
+                TotalRevenue = g.Sum(bs => bs.QuantityBoxes * bs.UnitPrice)
             })
             .OrderByDescending(s => s.TotalBoxes)
             .ToList();
@@ -705,7 +828,14 @@ public class StartSessionRequest
     public string Location { get; set; } = "";
     public int ScoutCount { get; set; } = 1;
     public string? Notes { get; set; }
+    public bool UsePersonalInventory { get; set; }
     public List<BoothInventoryInput>? Inventory { get; set; }
+}
+
+public class AddDonationRequest
+{
+    public Guid SessionId { get; set; }
+    public decimal Amount { get; set; }
 }
 
 public class BoothInventoryInput
@@ -738,7 +868,7 @@ public class BoothSaleItem
 
 public class UpdateBoothSaleRequest
 {
-    public Guid OrderId { get; set; }
+    public Guid SaleGroupId { get; set; }
     public string? PaymentMethod { get; set; }
     public string? Notes { get; set; }
     public Guid? GirlScoutId { get; set; }
@@ -747,5 +877,5 @@ public class UpdateBoothSaleRequest
 
 public class DeleteBoothSaleRequest
 {
-    public Guid OrderId { get; set; }
+    public Guid SaleGroupId { get; set; }
 }

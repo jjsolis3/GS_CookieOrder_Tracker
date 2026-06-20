@@ -95,7 +95,8 @@ public class InventoryController : Controller
     {
         var vm = new InventoryReturnCreateViewModel
         {
-            Products = await BuildProductOptionsAsync()
+            Products = await BuildProductOptionsAsync(),
+            ProductCards = await BuildProductCardsAsync()
         };
         return View(vm);
     }
@@ -112,6 +113,7 @@ public class InventoryController : Controller
         if (!ModelState.IsValid)
         {
             model.Products = await BuildProductOptionsAsync();
+            model.ProductCards = await BuildProductCardsAsync();
             return View(model);
         }
 
@@ -136,8 +138,8 @@ public class InventoryController : Controller
     {
         var received = await _dbContext.InventoryReceipts
             .Include(r => r.Product)
-            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase })
-            .Select(g => new { g.Key.ProductId, g.Key.Name, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
+            .GroupBy(r => new { r.ProductId, r.Product!.Name, r.Product.BoxesPerCase, r.Product.SortOrder })
+            .Select(g => new { g.Key.ProductId, g.Key.Name, g.Key.SortOrder, Boxes = g.Sum(r => r.QuantityBoxes + r.QuantityCases * g.Key.BoxesPerCase) })
             .ToListAsync();
 
         var soldPersonal = await _dbContext.OrderLineItems
@@ -152,6 +154,13 @@ public class InventoryController : Controller
             .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
             .ToListAsync();
 
+        var soldOnline = await _dbContext.OrderLineItems
+            .Include(li => li.Order)
+            .Where(li => li.InventorySource == "Personal" && li.Order!.OrderType == "Online Delivery")
+            .GroupBy(li => li.ProductId)
+            .Select(g => new { ProductId = g.Key, Boxes = g.Sum(li => li.QuantityBoxes) })
+            .ToListAsync();
+
         var returned = await _dbContext.InventoryReturns
             .Include(r => r.Product)
             .GroupBy(r => new { r.ProductId, r.Product!.BoxesPerCase })
@@ -162,6 +171,7 @@ public class InventoryController : Controller
         {
             var sp = soldPersonal.FirstOrDefault(s => s.ProductId == r.ProductId);
             var st = soldTroop.FirstOrDefault(s => s.ProductId == r.ProductId);
+            var so = soldOnline.FirstOrDefault(s => s.ProductId == r.ProductId);
             var rt = returned.FirstOrDefault(s => s.ProductId == r.ProductId);
             return new ProductStockRow
             {
@@ -170,9 +180,11 @@ public class InventoryController : Controller
                 BoxesReceived = r.Boxes,
                 BoxesSoldPersonal = sp?.Boxes ?? 0,
                 BoxesSoldTroop = st?.Boxes ?? 0,
-                BoxesReturned = rt?.Boxes ?? 0
+                BoxesSoldOnline = so?.Boxes ?? 0,
+                BoxesReturned = rt?.Boxes ?? 0,
+                SortOrder = r.SortOrder
             };
-        }).OrderBy(p => p.ProductName).ToList();
+        }).OrderBy(p => p.SortOrder).ThenBy(p => p.ProductName).ToList();
 
         // Load inventory batches for the combined view
         var batches = await _dbContext.InventoryBatches
@@ -226,11 +238,13 @@ public class InventoryController : Controller
         });
     }
 
-    // ───────── AJAX: Update batch ─────────
+    // ───────── AJAX: Update batch (header + receipts) ─────────
     [HttpPost]
     public async Task<IActionResult> UpdateBatch([FromBody] UpdateBatchRequest req)
     {
-        var batch = await _dbContext.InventoryBatches.FindAsync(req.BatchId);
+        var batch = await _dbContext.InventoryBatches
+            .Include(b => b.Receipts)
+            .FirstOrDefaultAsync(b => b.Id == req.BatchId);
         if (batch == null) return NotFound(new { error = "Batch not found." });
 
         batch.Status = req.Status;
@@ -239,8 +253,47 @@ public class InventoryController : Controller
         batch.Notes = req.Notes;
         batch.GirlScoutId = string.IsNullOrEmpty(req.GirlScoutId) ? null : Guid.Parse(req.GirlScoutId);
 
+        // Update receipt line items if provided
+        if (req.Receipts != null)
+        {
+            _dbContext.InventoryReceipts.RemoveRange(batch.Receipts);
+
+            foreach (var r in req.Receipts)
+            {
+                if (r.ProductId == Guid.Empty || (r.QuantityBoxes == 0 && r.QuantityCases == 0))
+                    continue;
+                _dbContext.InventoryReceipts.Add(new InventoryReceipt
+                {
+                    Id = Guid.NewGuid(),
+                    InventoryBatchId = batch.Id,
+                    ProductId = r.ProductId,
+                    QuantityBoxes = r.QuantityBoxes,
+                    QuantityCases = r.QuantityCases,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            var validReceipts = req.Receipts.Where(r => r.ProductId != Guid.Empty && (r.QuantityBoxes > 0 || r.QuantityCases > 0)).ToList();
+            batch.TotalBoxes = validReceipts.Sum(r => r.QuantityBoxes);
+            batch.TotalCases = validReceipts.Sum(r => r.QuantityCases);
+        }
+
         await _dbContext.SaveChangesAsync();
         return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Get products for modal/card selection ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetProducts()
+    {
+        var products = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath })
+            .ToListAsync();
+        return Json(products);
     }
 
     // ───────── AJAX: Delete batch ─────────
@@ -263,6 +316,7 @@ public class InventoryController : Controller
     {
         model.GirlScouts = await BuildGirlScoutOptionsAsync();
         model.Products = await BuildProductOptionsAsync();
+        model.ProductCards = await BuildProductCardsAsync();
         model.Statuses = new List<SelectListItem>
         {
             new("Received", "Received"),
@@ -300,6 +354,23 @@ public class InventoryController : Controller
             .Select(product => new SelectListItem(product.Name, product.Id.ToString()))
             .ToListAsync();
     }
+
+    private async Task<List<ProductCardItem>> BuildProductCardsAsync()
+    {
+        return await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new ProductCardItem
+            {
+                Id = p.Id,
+                Name = p.Name,
+                PricePerBox = p.PricePerBox,
+                BoxesPerCase = p.BoxesPerCase,
+                ImagePath = p.ImagePath
+            })
+            .ToListAsync();
+    }
 }
 
 public class UpdateBatchRequest
@@ -310,6 +381,14 @@ public class UpdateBatchRequest
     public string? PickupDate { get; set; }
     public string? Notes { get; set; }
     public string? GirlScoutId { get; set; }
+    public List<UpdateReceiptLine>? Receipts { get; set; }
+}
+
+public class UpdateReceiptLine
+{
+    public Guid ProductId { get; set; }
+    public int QuantityBoxes { get; set; }
+    public int QuantityCases { get; set; }
 }
 
 public class DeleteBatchRequest

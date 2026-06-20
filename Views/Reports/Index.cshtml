@@ -9,7 +9,7 @@
 </div>
 
 <div class="row">
-    <!-- Pending Orders Report -->
+    <!-- Pending Direct Orders Report -->
     <div class="col-xl-4 col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-body">
@@ -30,7 +30,49 @@
         </div>
     </div>
 
-    <!-- Payback Report -->
+    <!-- Order Summary (Custom Search) Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(25,118,210,.1)">
+                        <i class="fa fa-search text-primary" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Order Summary</h5>
+                        <small class="text-muted">Custom Search & Print</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Search by customer, date, status, or order type. Generates a consolidated summary with product totals and order details.</p>
+                <a asp-action="OrderSummary" class="btn btn-outline-primary btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Online Orders Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-warning-light rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa fa-clock text-info" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Online Orders</h5>
+                        <small class="text-muted">Online Fulfillment Report</small>
+                    </div>
+                </div>
+                <p class="text-muted small">View all online orders and the products needed to fulfill them. Great for preparing deliveries.</p>
+                <a asp-action="OnlineOrders" class="btn btn-outline-warning btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collections Report -->
     <div class="col-xl-4 col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-body">
@@ -39,12 +81,54 @@
                         <i class="fa fa-hand-holding-usd text-danger" style="font-size:1.3rem"></i>
                     </div>
                     <div>
-                        <h5 class="card-title mb-0">Payback Report</h5>
-                        <small class="text-muted">Collections Due</small>
+                        <h5 class="card-title mb-0">Collections Report</h5>
+                        <small class="text-muted">Outstanding Payments</small>
                     </div>
                 </div>
-                <p class="text-muted small">Track what customers owe and what needs to be collected. Shows outstanding balances.</p>
-                <a asp-action="Payback" class="btn btn-outline-danger btn-sm">
+                <p class="text-muted small">Track what customers owe and what needs to be collected. Shows outstanding balances by customer.</p>
+                <a asp-action="Collections" class="btn btn-outline-danger btn-sm">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Troop Payback Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(111,66,193,.1)">
+                        <i class="fa fa-money-check-alt" style="font-size:1.3rem;color:#6f42c1"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Troop Payback</h5>
+                        <small class="text-muted">What We Owe the Troop</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Shows how much to pay back to the Girl Scout Troop for cookies sold. Based on paid, delivered/completed orders.</p>
+                <a asp-action="Payback" class="btn btn-sm" style="color:#6f42c1;border-color:#6f42c1">
+                    <i class="fa fa-file-alt me-1"></i> View Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booth Session Report -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box rounded-circle me-3" style="width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:rgba(230,81,0,.1)">
+                        <i class="fa fa-store text-warning" style="font-size:1.3rem"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Booth Session</h5>
+                        <small class="text-muted">Session Report & Print</small>
+                    </div>
+                </div>
+                <p class="text-muted small">Select a booth session to generate a printable report with products sold, inventory, scout breakdown, and sales log.</p>
+                <a asp-action="BoothReport" class="btn btn-outline-warning btn-sm">
                     <i class="fa fa-file-alt me-1"></i> View Report
                 </a>
             </div>

@@ -21,3 +21,14 @@
 .bg-secondary-light {
     background-color: rgba(248, 185, 64, 0.1);
 }
+
+/* Donation section: center controls on small screens */
+@media (max-width: 767.98px) {
+    .donation-row {
+        justify-content: flex-start !important;
+    }
+    .donation-controls {
+        width: 100%;
+        justify-content: center;
+    }
+}

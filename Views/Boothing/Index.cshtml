@@ -37,8 +37,21 @@
                         <input id="sessionNotes" class="form-control" placeholder="e.g. Troop 774 - Saturday shift" />
                     </div>
 
-                    <!-- Starting Inventory (Troop-provided) -->
+                    <!-- Personal Inventory Toggle -->
                     <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="usePersonalInventory" />
+                            <label class="form-check-label fw-bold" for="usePersonalInventory">
+                                <i class="fa fa-user me-1"></i> Use Scout's Personal Inventory
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0 mt-1" id="inventorySourceHint">
+                            <strong>OFF:</strong> Inventory is provided by the troop. Sales won't affect the scout's personal stock.
+                        </p>
+                    </div>
+
+                    <!-- Starting Inventory (Troop-provided, hidden when personal inventory is ON) -->
+                    <div class="mb-3" id="troopInventorySection">
                         <label class="form-label fw-bold">
                             <i class="fa fa-boxes me-1"></i> Starting Inventory (Troop-Provided)
                         </label>
@@ -69,14 +82,14 @@
                 </div>
             </div>
             <!-- Past sales date picker for viewing history when no active session -->
-            <div class="card mt-3">
+            @* <div class="card mt-3">
                 <div class="card-body">
                     <form method="get" class="d-flex align-items-center gap-2 justify-content-center">
                         <label class="form-label mb-0 fw-bold">View Past Sales:</label>
                         <input type="date" name="date" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width:170px" onchange="this.form.submit()" />
                     </form>
                 </div>
-            </div>
+            </div> *@
         </div>
     </div>
 }
@@ -91,6 +104,18 @@
                     <span class="badge badge-primary" style="font-size:0.9rem">
                         <i class="fa fa-map-marker-alt me-1"></i> @Model.ActiveSession!.Location
                     </span>
+                    @if (Model.ActiveSession.UsePersonalInventory)
+                    {
+                        <span class="badge bg-warning text-dark" style="font-size:0.8rem">
+                            <i class="fa fa-user me-1"></i> Personal Inventory
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-info text-dark" style="font-size:0.8rem">
+                            <i class="fa fa-boxes me-1"></i> Troop Inventory
+                        </span>
+                    }
                     <span class="text-muted">
                         <i class="fa fa-users me-1"></i> @Model.ActiveSession.ScoutCount Scout@(Model.ActiveSession.ScoutCount != 1 ? "s" : "")
                     </span>
@@ -107,6 +132,12 @@
                     <a href="@csvUrl" class="btn btn-outline-success btn-sm">
                         <i class="fa fa-file-csv me-1"></i> Export
                     </a>
+                    @if (Model.ActiveSession != null)
+                    {
+                        <a href="@Url.Action("BoothReport", "Reports", new { sessionId = Model.ActiveSession.Id })" class="btn btn-outline-warning btn-sm" target="_blank">
+                            <i class="fa fa-print me-1"></i> Print Report
+                        </a>
+                    }
                     <button type="button" class="btn btn-outline-danger btn-sm" id="endSessionBtn" data-session-id="@Model.ActiveSession!.Id">
                         <i class="fa fa-stop me-1"></i> End Session
                     </button>
@@ -117,15 +148,15 @@
 
     <!-- ═══════════ KPI CARDS ═══════════ -->
     <div class="row">
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
-                    <h4 class="text-primary mb-0" id="kpiSaleCount">@Model.Orders.Count</h4>
+                    <h4 class="text-primary mb-0" id="kpiSaleCount">@Model.Sales.Count</h4>
                     <small class="text-muted">Sales</small>
                 </div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
                     <h4 class="text-success mb-0" id="kpiBoxCount">@Model.TotalSales</h4>
@@ -133,11 +164,57 @@
                 </div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-3">
             <div class="card">
                 <div class="card-body text-center py-2">
                     <h4 class="text-info mb-0" id="kpiRevenue">@Model.TotalRevenue.ToString("C")</h4>
                     <small class="text-muted">Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="card">
+                <div class="card-body text-center py-2">
+                    <h4 class="text-warning mb-0" id="kpiDonations">@Model.TotalDonations.ToString("C")</h4>
+                    <small class="text-muted">Donations</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ DONATION QUICK-ADD ═══════════ -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 donation-row">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa fa-heart text-danger"></i>
+                    <span class="fw-bold">Add Donation</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap donation-controls">
+                    <div class="btn-group btn-group-sm gap-1" role="group" aria-label="Quick Donation">
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="1">$1.00</button>
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="5">$5.00</button>
+                        <button type="button" class="btn btn-outline-secondary quick-donation" data-amt="10">$10.00</button>
+                    </div>
+                    <div class="input-group input-group-sm" style="width:180px;min-width:180px">
+                        <span class="input-group-text">$</span>
+                        <button type="button" id="donationMinus" class="btn btn-outline-danger btn-xs donation-minus" style="width:33px;height:33px;padding:0">
+                            <i class="fa fa-minus" style="font-size:0.7rem"></i>
+                        </button>
+                        <!-- Display Input field with 2 decimal significant numbers-->
+                        <input type="number" id="donationAmount" class="form-control text-center" style="font-size:0.8rem" min="0.00" step="1.00" placeholder="0.00" />
+                        <button type="button" id="donationPlus" class="btn btn-outline-success btn-xs donation-plus" style="width:33px;height:33px;padding:0">
+                            <i class="fa fa-plus" style="font-size:0.7rem"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-outline-danger btn-sm clear-donation" data-amt="0">
+                            <i class="fa fa-xmark-circle me-1"></i> Clear
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" id="addDonationBtn">
+                            <i class="fa fa-plus me-1"></i> Add
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -149,7 +226,7 @@
         <div class="card mb-3" id="boothInventoryPanel">
             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
-                    <i class="fa fa-boxes me-1"></i> Booth Inventory (Troop Stock)
+                    <i class="fa fa-boxes me-1"></i> Booth Inventory (@(Model.ActiveSession!.UsePersonalInventory ? "Personal Stock" : "Troop Stock"))
                 </h6>
                 <button type="button" class="btn btn-xs btn-outline-secondary" id="toggleInventoryBtn">
                     <i class="fa fa-chevron-up" id="inventoryToggleIcon"></i>
@@ -168,7 +245,7 @@
                             <div class="border rounded p-2 h-100">
                                 <div class="d-flex justify-content-between align-items-start mb-1">
                                     <small class="fw-bold text-truncate" style="max-width:80%">@item.ProductName</small>
-                                    <span class="badge @textColor inventory-remaining" style="font-size:0.8rem">@item.RemainingQuantity</span>
+                                    <span class="badge @textColor inventory-remaining" style="font-size:0.9rem">@item.RemainingQuantity</span>
                                 </div>
                                 <div class="progress" style="height:6px">
                                     <div class="progress-bar @barColor inventory-progress"
@@ -244,8 +321,8 @@
                              style="cursor:pointer; transition: all 0.15s ease;">
                             <div class="card-body p-2">
                                 <img src="@imgSrc" alt="@card.Name" class="mb-1 rounded" style="width:70px; height:70px; object-fit:contain;" />
-                                <p class="mb-0 fw-bold small" style="line-height:1.2">@card.Name</p>
-                                <small class="text-success fw-bold">@card.PricePerBox.ToString("C")</small>
+                                <p class="mb-0 fw-bold small" style="line-height:1.2;font-size:0.8rem">@card.Name</p>
+                                <small class="text-success fw-bold" style="font-size:0.8rem">@card.PricePerBox.ToString("C")</small>
                                 <!-- Quantity controls (shown when selected) -->
                                 <div class="qty-controls d-none mt-1">
                                     <div class="d-flex align-items-center justify-content-center gap-1">
@@ -272,8 +349,8 @@
             <h5 class="card-title mb-0">Session Sales</h5>
         </div>
         <div class="card-body">
-            <div id="salesEmpty" class="text-muted text-center py-3 @(Model.Orders.Any() ? "d-none" : "")">No sales yet. Tap a cookie above to start selling!</div>
-            <div class="table-responsive @(!Model.Orders.Any() ? "d-none" : "")" id="salesTableWrap">
+            <div id="salesEmpty" class="text-muted text-center py-3 @(Model.Sales.Any() ? "d-none" : "")">No sales yet. Tap a cookie above to start selling!</div>
+            <div class="table-responsive @(!Model.Sales.Any() ? "d-none" : "")" id="salesTableWrap">
                 <table class="table table-sm table-hover mb-0">
                     <thead>
                         <tr>
@@ -288,24 +365,21 @@
                         </tr>
                     </thead>
                     <tbody id="salesTableBody">
-                        @{ var counter = Model.Orders.Count; }
-                        @foreach (var order in Model.Orders)
+                        @{ var counter = Model.Sales.Count; }
+                        @foreach (var sale in Model.Sales)
                         {
-                            var scoutName = order.GirlScout != null
-                                ? $"{order.GirlScout.FirstName} {order.GirlScout.LastName}"
-                                : "";
                             <tr>
                                 <td>@counter</td>
-                                <td class="text-nowrap"><small>@order.CreatedAt.ToString("h:mm tt")</small></td>
+                                <td class="text-nowrap"><small>@sale.CreatedAt.ToPacific().ToString("h:mm tt")</small></td>
                                 <td style="white-space:normal;word-break:break-word">
-                                    <small>@string.Join(", ", order.LineItems.Select(li => $"{li.Product?.Name} x{li.QuantityBoxes}"))</small>
+                                    <small>@string.Join(", ", sale.LineItems.Select(li => $"{li.ProductName} x{li.QuantityBoxes}"))</small>
                                 </td>
-                                <td><small>@scoutName</small></td>
-                                <td><small>@order.PaymentMethod</small></td>
-                                <td class="text-center">@order.TotalQty</td>
-                                <td class="text-end text-nowrap"><strong>@order.TotalPrice?.ToString("C")</strong></td>
+                                <td><small>@(sale.ScoutName ?? "")</small></td>
+                                <td><small>@sale.PaymentMethod</small></td>
+                                <td class="text-center">@sale.TotalQty</td>
+                                <td class="text-end text-nowrap"><strong>@sale.TotalPrice.ToString("C")</strong></td>
                                 <td>
-                                    <button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="@order.Id" title="Edit">
+                                    <button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-sale-group-id="@sale.SaleGroupId" title="Edit">
                                         <i class="fa fa-pencil"></i>
                                     </button>
                                 </td>
@@ -414,10 +488,120 @@
             // Page state
             var selectedDate = '@Model.SelectedDate.ToString("yyyy-MM-dd")';
             var sessionId = '@(hasSession ? Model.ActiveSession!.Id.ToString() : "")';
-            var currentSaleCount = parseInt('@Model.Orders.Count') || 0;
+            var currentSaleCount = parseInt('@Model.Sales.Count') || 0;
             var cart = {};
 
             console.log('[BoothSales] Session ID:', sessionId || '(none)');
+
+            // ══════════ PERSONAL INVENTORY TOGGLE ══════════
+            var personalToggle = getEl('usePersonalInventory');
+            var troopInventorySection = getEl('troopInventorySection');
+            var inventoryHint = getEl('inventorySourceHint');
+            if (personalToggle) {
+                personalToggle.onchange = function() {
+                    if (personalToggle.checked) {
+                        if (troopInventorySection) troopInventorySection.style.display = 'none';
+                        if (inventoryHint) inventoryHint.innerHTML = '<strong>ON:</strong> Inventory comes from the scout\'s personal stock. Sales will deduct from her inventory.';
+                    } else {
+                        if (troopInventorySection) troopInventorySection.style.display = '';
+                        if (inventoryHint) inventoryHint.innerHTML = '<strong>OFF:</strong> Inventory is provided by the troop. Sales won\'t affect the scout\'s personal stock.';
+                    }
+                };
+            }
+
+            // ══════════ DONATION ══════════
+            var donationBtn = getEl('addDonationBtn');
+            if (donationBtn && sessionId) {
+                donationBtn.onclick = function() {
+                    var amountEl = getEl('donationAmount');
+                    var amount = parseFloat(amountEl ? amountEl.value : 0);
+                    if (!amount || amount <= 0) { alert('Please enter a donation amount.'); return; }
+
+                    donationBtn.disabled = true;
+                    fetch('@Url.Action("AddDonation", "Boothing")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                        body: JSON.stringify({ sessionId: sessionId, amount: amount })
+                    }).then(function(r) {
+                        if (r.ok) {
+                            return r.json().then(function(d) {
+                                var donEl = getEl('kpiDonations');
+                                if (donEl) {
+                                    donEl.textContent = '$' + d.totalDonations.toFixed(2);
+                                    flashKpi(donEl);
+                                }
+                                if (amountEl) amountEl.value = '';
+                                donationBtn.disabled = false;
+                            });
+                        } else {
+                            donationBtn.disabled = false;
+                            r.json().then(function(d) { alert(d.error || 'Failed to add donation.'); });
+                        }
+                    }).catch(function() {
+                        donationBtn.disabled = false;
+                        alert('Network error. Please try again.');
+                    });
+                };
+            }
+            
+            // ══════════ DONATION +/- + QUICK ADD ══════════
+            const donationInput = getEl('donationAmount');
+            const donationMinusBtn = getEl('donationMinus');
+            const donationPlusBtn  = getEl('donationPlus');
+            const addBoxBtn        = getEl('addBoxDonationsBtn'); // Add 1 Box
+
+            function readDonation() {
+              const v = parseFloat(donationInput?.value || '');
+              return Number.isFinite(v) ? v : 0;
+            }
+
+            function writeDonation(v) {
+              const value = Math.max(0, Math.round(v * 100) / 100); // keep 2-decimal safe
+              if (!donationInput) return;
+
+              // show like "6" instead of "6.00" (optional)
+              donationInput.value = (value % 1 === 0) ? String(value) : value.toFixed(2);
+            }
+
+            function bumpDonation(delta) {
+              writeDonation(readDonation() + delta);
+            }
+
+            if (donationMinusBtn) {
+              donationMinusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(-1.00);
+              });
+            }
+
+            if (donationPlusBtn) {
+              donationPlusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(1.00);
+              });
+            }
+
+            // ✅ Add 1 Box = +$6 each click
+            if (addBoxBtn) {
+              addBoxBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bumpDonation(6.00);
+              });
+            }
+
+            getAll('.quick-donation').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const amt = parseFloat(btn.dataset.amt || '0.00') || 0.00;
+                bumpDonation(amt);
+              });
+            });
+
+            document.querySelectorAll('.clear-donation').forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                writeDonation(0.00);
+              });
+            });
 
             // ══════════ SESSION TIMER ══════════
             var timerEl = getEl('sessionTimer');
@@ -455,6 +639,8 @@
                         }
                     });
 
+                    var usePersonal = personalToggle ? personalToggle.checked : false;
+
                     fetch('@Url.Action("StartSession", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
@@ -462,7 +648,8 @@
                             location: loc,
                             scoutCount: scoutCountEl ? (parseInt(scoutCountEl.value) || 1) : 1,
                             notes: notesEl ? (notesEl.value || null) : null,
-                            inventory: inventory
+                            usePersonalInventory: usePersonal,
+                            inventory: usePersonal ? [] : inventory
                         })
                     }).then(function(r) {
                         if (r.ok) location.reload();
@@ -719,7 +906,7 @@
                         '<td><small>' + escapeHtml(sale.paymentMethod) + '</small></td>' +
                         '<td class="text-center">' + sale.totalQty + '</td>' +
                         '<td class="text-end text-nowrap"><strong>$' + sale.totalPrice.toFixed(2) + '</strong></td>' +
-                        '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-order-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
+                        '<td><button type="button" class="btn btn-xs btn-outline-primary sale-edit-btn" data-sale-group-id="' + sale.id + '" title="Edit"><i class="fa fa-pencil"></i></button></td>';
                     tbody.insertBefore(tr, tbody.firstChild);
                 }
             }
@@ -794,13 +981,13 @@
             }
 
             // ══════════ EDIT SALE MODAL ══════════
-            var editOrderId = null;
+            var editSaleGroupId = null;
             var productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCards.Select(p => new { id = p.Id.ToString(), name = p.Name, pricePerBox = p.PricePerBox })));
 
-            function openEditModal(orderId) {
-                editOrderId = orderId;
+            function openEditModal(saleGroupId) {
+                editSaleGroupId = saleGroupId;
 
-                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editOrderId)
+                fetch('@Url.Action("GetSaleDetail", "Boothing")?id=' + editSaleGroupId)
                     .then(function(r) { return r.json(); })
                     .then(function(d) {
                         var payMethodEl = getEl('editPayMethod');
@@ -859,8 +1046,8 @@
             // Edit button click delegation
             document.addEventListener('click', function(e) {
                 var editBtn = e.target.closest('.sale-edit-btn');
-                if (editBtn && editBtn.dataset.orderId) {
-                    openEditModal(editBtn.dataset.orderId);
+                if (editBtn && editBtn.dataset.saleGroupId) {
+                    openEditModal(editBtn.dataset.saleGroupId);
                 }
             });
 
@@ -873,7 +1060,7 @@
             var editSaveBtn = getEl('editSaveBtn');
             if (editSaveBtn) {
                 editSaveBtn.onclick = function() {
-                    if (!editOrderId) return;
+                    if (!editSaleGroupId) return;
 
                     var items = [];
                     getAll('.edit-line').forEach(function(row) {
@@ -892,7 +1079,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
                         body: JSON.stringify({
-                            orderId: editOrderId,
+                            saleGroupId: editSaleGroupId,
                             paymentMethod: payMethodEl ? payMethodEl.value : 'Cash',
                             notes: notesEl ? (notesEl.value || null) : null,
                             girlScoutId: girlScoutId,
@@ -908,13 +1095,13 @@
             var editDeleteBtn = getEl('editDeleteBtn');
             if (editDeleteBtn) {
                 editDeleteBtn.onclick = function() {
-                    if (!editOrderId) return;
+                    if (!editSaleGroupId) return;
                     if (!confirm('Delete this sale? This cannot be undone.')) return;
 
                     fetch('@Url.Action("DeleteSale", "Boothing")', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-                        body: JSON.stringify({ orderId: editOrderId })
+                        body: JSON.stringify({ saleGroupId: editSaleGroupId })
                     }).then(function(r) {
                         if (r.ok) location.reload();
                         else r.json().then(function(d) { alert(d.error || 'Failed to delete.'); });

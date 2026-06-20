@@ -1,4 +1,5 @@
 using GS_CookieOrder_Tracker.Data;
+using GS_CookieOrder_Tracker.Helpers;
 using GS_CookieOrder_Tracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +26,8 @@ public class OrdersController : Controller
         string? status,
         DateTime? dateFrom,
         DateTime? dateTo,
+        string? sortBy,
+        string? sortDir,
         int page = 1,
         int pageSize = 25)
     {
@@ -75,8 +78,21 @@ public class OrdersController : Controller
         if (page < 1) page = 1;
         if (page > totalPages && totalPages > 0) page = totalPages;
 
-        var orders = await query
-            .OrderByDescending(o => o.OrderedAt)
+        // Apply sorting
+        var isDesc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+        IOrderedQueryable<Order> sorted = sortBy?.ToLower() switch
+        {
+            "date" => isDesc ? query.OrderByDescending(o => o.OrderedAt) : query.OrderBy(o => o.OrderedAt),
+            "type" => isDesc ? query.OrderByDescending(o => o.OrderType) : query.OrderBy(o => o.OrderType),
+            "customer" => isDesc ? query.OrderByDescending(o => o.Customer != null ? o.Customer.Name : "") : query.OrderBy(o => o.Customer != null ? o.Customer.Name : ""),
+            "scout" => isDesc ? query.OrderByDescending(o => o.GirlScout != null ? o.GirlScout.FirstName : "") : query.OrderBy(o => o.GirlScout != null ? o.GirlScout.FirstName : ""),
+            "status" => isDesc ? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
+            "qty" => isDesc ? query.OrderByDescending(o => o.TotalQty) : query.OrderBy(o => o.TotalQty),
+            "total" => isDesc ? query.OrderByDescending(o => o.TotalPrice) : query.OrderBy(o => o.TotalPrice),
+            _ => query.OrderByDescending(o => o.OrderedAt) // default: newest first
+        };
+
+        var orders = await sorted
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -92,6 +108,8 @@ public class OrdersController : Controller
             PageSize = pageSize,
             TotalPages = totalPages,
             TotalFilteredCount = totalFiltered,
+            SortBy = sortBy,
+            SortDir = sortDir,
             SearchTerm = search,
             OrderTypeFilter = orderType,
             StatusFilter = status,
@@ -109,7 +127,6 @@ public class OrdersController : Controller
                 new("All Statuses", ""),
                 new("Pending", "Pending"),
                 new("Confirmed", "Confirmed"),
-                new("Paid", "Paid"),
                 new("Delivered", "Delivered"),
                 new("Completed", "Completed"),
                 new("Cancelled", "Cancelled")
@@ -159,7 +176,7 @@ public class OrdersController : Controller
             OrderType = model.OrderType,
             PaymentMethod = model.PaymentMethod,
             IsOnlinePaid = isOnlinePaid,
-            Status = isOnlinePaid ? "Paid" : "Pending",
+            Status = isOnlinePaid ? "Completed" : "Pending",
             OrderedAt = orderedUtc,
             DeliveryDate = model.DeliveryDate,
             Notes = model.Notes,
@@ -202,11 +219,27 @@ public class OrdersController : Controller
         order.Status = req.Status;
         order.UpdatedAt = DateTime.UtcNow;
 
-        if (req.Status == "Paid" || req.Status == "Completed")
-            order.PaidAmount = order.TotalPrice;
+        // Payment is now tracked separately via PaidAmount field, not via status
 
         await _dbContext.SaveChangesAsync();
         return Ok(new { success = true });
+    }
+
+    // ───────── AJAX: Toggle payment status ─────────
+    [HttpPost]
+    public async Task<IActionResult> TogglePayment([FromBody] TogglePaymentRequest req)
+    {
+        var order = await _dbContext.Orders.FindAsync(req.OrderId);
+        if (order == null) return NotFound();
+
+        if (req.MarkAsPaid)
+            order.PaidAmount = order.TotalPrice;
+        else
+            order.PaidAmount = 0m;
+
+        order.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true, paidAmount = order.PaidAmount });
     }
 
     // ───────── AJAX: Get order detail for modal ─────────
@@ -348,6 +381,92 @@ public class OrdersController : Controller
         await _dbContext.SaveChangesAsync();
     }
 
+    // ───────── AJAX: Get data for quick-order modal ─────────
+    [HttpGet]
+    public async Task<IActionResult> GetQuickOrderData()
+    {
+        var products = await _dbContext.Products
+            .Where(p => p.Active)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath })
+            .ToListAsync();
+
+        var customers = await _dbContext.Customers
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync();
+
+        var scouts = await _dbContext.GirlScouts
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .Select(s => new { s.Id, Name = s.FirstName + " " + s.LastName })
+            .ToListAsync();
+
+        return Json(new { products, customers, scouts });
+    }
+
+    // ───────── AJAX: Quick create order (from modal) ─────────
+    [HttpPost]
+    public async Task<IActionResult> QuickCreate([FromBody] QuickCreateOrderRequest req)
+    {
+        if (req.Items == null || req.Items.Count == 0)
+            return BadRequest(new { error = "At least one product is required." });
+
+        var productIds = req.Items.Select(i => i.ProductId).ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var totalQty = req.Items.Sum(i => i.Qty);
+        var totalPrice = req.Items.Sum(i => i.Qty * (products.ContainsKey(i.ProductId) ? products[i.ProductId].PricePerBox : 0));
+
+        var isOnlinePaid = req.OrderType == "Online Delivery";
+        var orderedUtc = DateTime.SpecifyKind(
+            req.OrderDate.HasValue ? req.OrderDate.Value.Date : DateTime.UtcNow.Date,
+            DateTimeKind.Utc);
+
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = req.CustomerId,
+            GirlScoutId = req.GirlScoutId,
+            OrderType = req.OrderType ?? "Direct Sale",
+            PaymentMethod = req.PaymentMethod ?? "Cash",
+            IsOnlinePaid = isOnlinePaid,
+            Status = isOnlinePaid ? "Completed" : "Pending",
+            OrderedAt = orderedUtc,
+            Notes = req.Notes,
+            TotalQty = totalQty,
+            TotalPrice = totalPrice,
+            PaidAmount = isOnlinePaid ? totalPrice : 0m,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Orders.Add(order);
+
+        foreach (var item in req.Items)
+        {
+            if (!products.ContainsKey(item.ProductId) || item.Qty <= 0) continue;
+            var source = req.OrderType == "Booth Sale" ? "Troop" : (req.InventorySource ?? "Personal");
+
+            _dbContext.OrderLineItems.Add(new OrderLineItem
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProductId = item.ProductId,
+                QuantityBoxes = item.Qty,
+                UnitPrice = products[item.ProductId].PricePerBox,
+                InventorySource = source,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return Ok(new { success = true, orderId = order.Id, totalPrice, totalQty });
+    }
+
     // ───────── Dropdown helpers ─────────
     private async Task PopulateDropdowns(OrderCreateViewModel model)
     {
@@ -358,7 +477,7 @@ public class OrdersController : Controller
             .Where(p => p.Active)
             .OrderBy(p => p.SortOrder)
             .ThenBy(p => p.Name)
-            .Select(p => new { p.Id, p.Name, p.PricePerBox })
+            .Select(p => new { p.Id, p.Name, p.PricePerBox, p.ImagePath, p.BoxesPerCase })
             .ToListAsync();
 
         model.Products = products
@@ -366,6 +485,15 @@ public class OrdersController : Controller
             .ToList();
 
         model.ProductPrices = products.ToDictionary(p => p.Id.ToString(), p => p.PricePerBox);
+
+        model.ProductCards = products.Select(p => new ProductCardItem
+        {
+            Id = p.Id,
+            Name = p.Name,
+            PricePerBox = p.PricePerBox,
+            BoxesPerCase = p.BoxesPerCase,
+            ImagePath = p.ImagePath
+        }).ToList();
         model.OrderTypes = new List<SelectListItem>
         {
             new("Direct Sale", "Direct Sale"),
@@ -457,6 +585,10 @@ public class OrdersController : Controller
             .Select(s => new SelectListItem($"{s.FirstName} {s.LastName}", s.Id.ToString()))
             .ToListAsync();
 
+        // Auto-select the first scout as default
+        if (scouts.Any())
+            scouts[0].Selected = true;
+
         scouts.Insert(0, new SelectListItem("Unassigned", ""));
         return scouts;
     }
@@ -488,4 +620,28 @@ public class AddLineItemRequest
 public class RemoveLineItemRequest
 {
     public Guid LineItemId { get; set; }
+}
+
+public class TogglePaymentRequest
+{
+    public Guid OrderId { get; set; }
+    public bool MarkAsPaid { get; set; }
+}
+
+public class QuickCreateOrderRequest
+{
+    public string? OrderType { get; set; }
+    public Guid? CustomerId { get; set; }
+    public Guid? GirlScoutId { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string? InventorySource { get; set; }
+    public DateTime? OrderDate { get; set; }
+    public string? Notes { get; set; }
+    public List<QuickOrderItem> Items { get; set; } = new();
+}
+
+public class QuickOrderItem
+{
+    public Guid ProductId { get; set; }
+    public int Qty { get; set; }
 }
